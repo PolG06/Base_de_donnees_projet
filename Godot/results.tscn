@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://02qtkx2thj14"]
+
+[ext_resource type="Script" uid="uid://tos4fp8cthj0" path="res://main.gd" id="1_mabgl"]
+
+[node name="Main" type="Node2D" unique_id=416209018]
+script = ExtResource("1_mabgl")
+
+[node name="Lava" type="ColorRect" parent="." unique_id=1021591766]
+offset_right = 2000.0
+offset_bottom = 2000.0
+color = Color(0.6434973, 0.30393514, 0.037575003, 0.98039216)
+
+[node name="Plateform" type="ColorRect" parent="Lava" unique_id=408998498]
+layout_mode = 0
+offset_left = 103.0
+offset_top = 103.0
+offset_right = 1903.0
+offset_bottom = 1903.0
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=728210328]
+
+[node name="Label" type="Label" parent="CanvasLayer" unique_id=1033665154]
+offset_left = 350.0
+offset_top = 501.0
+offset_right = 1523.0
+offset_bottom = 1429.0
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=1232204074]
+position = Vector2(990, 979)
+zoom = Vector2(0.58, 0.33)

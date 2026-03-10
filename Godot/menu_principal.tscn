@@ -1,0 +1,76 @@
+[gd_scene format=3 uid="uid://c662t8g7h6v2"]
+
+[ext_resource type="Texture2D" uid="uid://dul0ngg3htrfc" path="res://imageBlindshot.jpg" id="1_bj1uy"]
+[ext_resource type="Script" uid="uid://bxpfg41o1rwph" path="res://menu_principal.gd" id="1_gmcsc"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_gmcsc"]
+font_size = 22
+font_color = Color(0.91764706, 0.7176471, 0.5686275, 1)
+
+[sub_resource type="FontVariation" id="FontVariation_bj1uy"]
+
+[node name="MenuPrincipal" type="Control" unique_id=920659148]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("1_gmcsc")
+
+[node name="Background" type="TextureRect" parent="." unique_id=1932956519]
+layout_mode = 1
+anchors_preset = -1
+anchor_left = 11.7560005
+anchor_top = 5.181
+anchor_right = 11.7560005
+anchor_bottom = 5.181
+offset_left = -469.24002
+offset_top = -207.24
+offset_right = 27.75998
+offset_bottom = 72.759995
+grow_vertical = 0
+texture = ExtResource("1_bj1uy")
+metadata/_edit_use_anchors_ = true
+
+[node name="Titre" type="Label" parent="." unique_id=727492754]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = 2.0
+offset_top = 14.0
+offset_right = 162.0
+offset_bottom = 45.0
+grow_horizontal = 2
+text = "Menu Principal"
+label_settings = SubResource("LabelSettings_gmcsc")
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=1108765798]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = 95.0
+offset_top = 77.0
+offset_right = 330.0
+offset_bottom = 144.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BtnCommencer" type="Button" parent="VBoxContainer" unique_id=931039487]
+layout_mode = 2
+theme_override_fonts/font = SubResource("FontVariation_bj1uy")
+theme_override_font_sizes/font_size = 17
+text = "Commencer une partie"
+
+[node name="BtnQuitter" type="Button" parent="VBoxContainer" unique_id=399222403]
+layout_mode = 2
+text = "Quitter le jeu"
+
+[node name="Camera2D" type="Camera2D" parent="." unique_id=639253529]
+position = Vector2(247, 141)
+zoom = Vector2(2.35, 2.35)
+
+[connection signal="button_down" from="VBoxContainer/BtnCommencer" to="." method="_on_btn_commencer_button_down"]
+[connection signal="button_down" from="VBoxContainer/BtnQuitter" to="." method="_on_btn_quitter_button_down"]

@@ -1,0 +1,390 @@
+[gd_scene load_steps=2 format=3 uid="uid://c1s5ngf4t7q0r"]
+
+[ext_resource type="Script" path="res://scripts/game.gd" id="1_10w0r"]
+
+[node name="Game" type="Node3D"]
+script = ExtResource("1_10w0r")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(0.92388, -0.147016, 0.353553, 0.0, 0.92388, 0.382683, -0.382683, -0.353553, 0.853553, 0, 13, 18)
+current = true
+
+[node name="SunLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.851651, -0.479574, 0.21131, 0, 0.403975, 0.91477, -0.524104, -0.779052, 0.344847, 0, 8, 0)
+light_energy = 1.8
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+
+[node name="Arena" type="Node3D" parent="."]
+
+[node name="Players" type="Node3D" parent="."]
+
+[node name="Projectiles" type="Node3D" parent="."]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="PhaseLabel" type="Label" parent="CanvasLayer"]
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 649.0
+offset_bottom = 62.0
+theme_override_font_sizes/font_size = 14
+text = "Initialisation..."
+
+[node name="InfoLabel" type="Label" parent="CanvasLayer"]
+offset_left = 24.0
+offset_top = 48.0
+offset_right = 792.0
+offset_bottom = 154.0
+theme_override_font_sizes/font_size = 14
+text = ""
+
+[node name="SpectatorLabel" type="Label" parent="CanvasLayer"]
+offset_left = 300.0
+offset_top = 20.0
+offset_right = 980.0
+offset_bottom = 78.0
+theme_override_font_sizes/font_size = 28
+text = "Spectateur"
+horizontal_alignment = 1
+visible = false
+
+[node name="SpectatorQuitButton" type="Button" parent="CanvasLayer"]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -200.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = 60.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "Quitter le spectateur"
+
+[node name="NotificationLabel" type="Label" parent="CanvasLayer"]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -220.0
+offset_top = 70.0
+offset_right = 220.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 0
+horizontal_alignment = 1
+vertical_alignment = 1
+theme_override_font_sizes/font_size = 26
+text = ""
+
+[node name="RoundTransition" type="ColorRect" parent="CanvasLayer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.7)
+modulate = Color(1, 1, 1, 0)
+
+[node name="RoundTransitionLabel" type="Label" parent="CanvasLayer/RoundTransition"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 46
+text = "Manche"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RoundAliveLabel" type="Label" parent="CanvasLayer/RoundTransition"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 80.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 20
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="OrderPanel" type="Panel" parent="CanvasLayer"]
+visible = false
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -260.0
+offset_top = 90.0
+offset_right = -20.0
+offset_bottom = 320.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+
+[node name="OrderVBox" type="VBoxContainer" parent="CanvasLayer/OrderPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+mouse_filter = 2
+
+[node name="OrderTitle" type="Label" parent="CanvasLayer/OrderPanel/OrderVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Ordre de tir"
+horizontal_alignment = 1
+mouse_filter = 2
+
+[node name="OrderList" type="VBoxContainer" parent="CanvasLayer/OrderPanel/OrderVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+mouse_filter = 2
+
+[node name="PauseOverlay" type="ColorRect" parent="CanvasLayer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.45)
+
+[node name="PausePanel" type="Panel" parent="CanvasLayer/PauseOverlay"]
+custom_minimum_size = Vector2(720, 620)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -360.0
+offset_top = -310.0
+offset_right = 360.0
+offset_bottom = 310.0
+
+[node name="PauseMenuVBox" type="VBoxContainer" parent="CanvasLayer/PauseOverlay/PausePanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -160.0
+offset_top = -120.0
+offset_right = 160.0
+offset_bottom = 120.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 18
+
+[node name="PauseLabel" type="Label" parent="CanvasLayer/PauseOverlay/PausePanel/PauseMenuVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Pause"
+horizontal_alignment = 1
+
+[node name="ResumeButton" type="Button" parent="CanvasLayer/PauseOverlay/PausePanel/PauseMenuVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+text = "Reprendre"
+
+[node name="PauseSettingsButton" type="Button" parent="CanvasLayer/PauseOverlay/PausePanel/PauseMenuVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+text = "Parametres"
+
+[node name="QuitButton" type="Button" parent="CanvasLayer/PauseOverlay/PausePanel/PauseMenuVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+text = "Quitter"
+
+[node name="PauseSettingsPanel" type="Panel" parent="CanvasLayer/PauseOverlay/PausePanel"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 18.0
+offset_right = -18.0
+offset_bottom = -18.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PauseSettingsMargin" type="MarginContainer" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 28
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 28
+
+[node name="PauseSettingsVBox" type="VBoxContainer" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="PauseSettingsTitle" type="Label" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Parametres"
+horizontal_alignment = 1
+
+[node name="PauseSettingsSubtitle" type="Label" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Clique sur une action pour choisir une nouvelle touche"
+horizontal_alignment = 1
+
+[node name="PauseSettingsControlsPanel" type="Panel" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox"]
+custom_minimum_size = Vector2(0, 360)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PauseSettingsControlsMargin" type="MarginContainer" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox/PauseSettingsControlsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 18
+
+[node name="PauseSettingsControlsColumn" type="VBoxContainer" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox/PauseSettingsControlsPanel/PauseSettingsControlsMargin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="PauseSettingsHeaderRow" type="HBoxContainer" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox/PauseSettingsControlsPanel/PauseSettingsControlsMargin/PauseSettingsControlsColumn"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PauseSettingsActionHeader" type="Label" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox/PauseSettingsControlsPanel/PauseSettingsControlsMargin/PauseSettingsControlsColumn/PauseSettingsHeaderRow"]
+custom_minimum_size = Vector2(280, 30)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Action"
+
+[node name="PauseSettingsKeyHeader" type="Label" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox/PauseSettingsControlsPanel/PauseSettingsControlsMargin/PauseSettingsControlsColumn/PauseSettingsHeaderRow"]
+custom_minimum_size = Vector2(220, 30)
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Touche"
+
+[node name="PauseSettingsScroll" type="ScrollContainer" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox/PauseSettingsControlsPanel/PauseSettingsControlsMargin/PauseSettingsControlsColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="PauseSettingsControlsList" type="VBoxContainer" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox/PauseSettingsControlsPanel/PauseSettingsControlsMargin/PauseSettingsControlsColumn/PauseSettingsScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="PauseSettingsStatusPanel" type="Panel" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox"]
+custom_minimum_size = Vector2(0, 74)
+layout_mode = 2
+
+[node name="PauseSettingsStatusLabel" type="Label" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox/PauseSettingsStatusPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 18.0
+offset_top = 14.0
+offset_right = -18.0
+offset_bottom = -14.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 14
+autowrap_mode = 3
+text = "Clique sur une action pour changer sa touche."
+vertical_alignment = 1
+
+[node name="PauseSettingsBackButton" type="Button" parent="CanvasLayer/PauseOverlay/PausePanel/PauseSettingsPanel/PauseSettingsMargin/PauseSettingsVBox"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 52)
+text = "Retour"
+
+[node name="GameOverOverlay" type="ColorRect" parent="CanvasLayer"]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.78)
+
+[node name="GameOverPanel" type="Panel" parent="CanvasLayer/GameOverOverlay"]
+custom_minimum_size = Vector2(900, 540)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 120.0
+offset_top = 80.0
+offset_right = -120.0
+offset_bottom = -80.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="GameOverTitle" type="Label" parent="CanvasLayer/GameOverOverlay/GameOverPanel"]
+layout_mode = 0
+offset_left = 28.0
+offset_top = 24.0
+offset_right = 872.0
+offset_bottom = 90.0
+theme_override_font_sizes/font_size = 40
+text = "Victoire"
+horizontal_alignment = 1
+
+[node name="RankingLabel" type="Label" parent="CanvasLayer/GameOverOverlay/GameOverPanel"]
+layout_mode = 0
+offset_left = 38.0
+offset_top = 112.0
+offset_right = 862.0
+offset_bottom = 360.0
+theme_override_font_sizes/font_size = 24
+text = "1. Joueur 1"
+vertical_alignment = 1
+
+[node name="GameOverQuitButton" type="Button" parent="CanvasLayer/GameOverOverlay/GameOverPanel"]
+custom_minimum_size = Vector2(170, 52)
+layout_mode = 0
+offset_left = 500.0
+offset_top = 420.0
+offset_right = 700.0
+offset_bottom = 480.0
+text = "Quitter le jeu"
+
+[node name="GameOverRestartButton" type="Button" parent="CanvasLayer/GameOverOverlay/GameOverPanel"]
+custom_minimum_size = Vector2(170, 52)
+layout_mode = 0
+offset_left = 200.0
+offset_top = 420.0
+offset_right = 370.0
+offset_bottom = 480.0
+text = "Recommencer"
+

@@ -1,0 +1,139 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/solo_setup.gd" id="1_solo"]
+
+[node name="SoloSetup" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_solo")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.12, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="Panel" parent="CenterContainer"]
+custom_minimum_size = Vector2(540, 430)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/Panel"]
+layout_mode = 0
+offset_left = 32.0
+offset_top = 28.0
+offset_right = 508.0
+offset_bottom = 398.0
+theme_override_constants/separation = 18
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Mode solo"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Choisis le nombre de bots adverses"
+horizontal_alignment = 1
+
+[node name="SpacerTop" type="Control" parent="CenterContainer/Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 14)
+layout_mode = 2
+
+[node name="BotCountRow" type="HBoxContainer" parent="CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 18
+
+[node name="MinusButton" type="Button" parent="CenterContainer/Panel/VBoxContainer/BotCountRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(64, 52)
+text = "-"
+
+[node name="BotCountText" type="Label" parent="CenterContainer/Panel/VBoxContainer/BotCountRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Bots :"
+vertical_alignment = 1
+
+[node name="BotCountValue" type="Label" parent="CenterContainer/Panel/VBoxContainer/BotCountRow"]
+custom_minimum_size = Vector2(48, 52)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "3"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="PlusButton" type="Button" parent="CenterContainer/Panel/VBoxContainer/BotCountRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(64, 52)
+text = "+"
+
+[node name="HintLabel" type="Label" parent="CenterContainer/Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Tu peux choisir entre 1 et 6 bots."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="DifficultyRow" type="VBoxContainer" parent="CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="DifficultyText" type="Label" parent="CenterContainer/Panel/VBoxContainer/DifficultyRow"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Difficulte :"
+horizontal_alignment = 1
+
+[node name="DifficultyButtons" type="HBoxContainer" parent="CenterContainer/Panel/VBoxContainer/DifficultyRow"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 12
+
+[node name="BeginnerButton" type="Button" parent="CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyButtons"]
+layout_mode = 2
+custom_minimum_size = Vector2(130, 46)
+text = "Debutant"
+
+[node name="NormalButton" type="Button" parent="CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyButtons"]
+layout_mode = 2
+custom_minimum_size = Vector2(130, 46)
+text = "Normal"
+
+[node name="HardButton" type="Button" parent="CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyButtons"]
+layout_mode = 2
+custom_minimum_size = Vector2(130, 46)
+text = "Difficile"
+
+[node name="SpacerBottom" type="Control" parent="CenterContainer/Panel/VBoxContainer"]
+custom_minimum_size = Vector2(0, 8)
+layout_mode = 2
+
+[node name="ContinueButton" type="Button" parent="CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 52)
+text = "Continuer"
+
+[node name="BackButton" type="Button" parent="CenterContainer/Panel/VBoxContainer"]
+layout_mode = 2
+custom_minimum_size = Vector2(0, 48)
+text = "Retour"

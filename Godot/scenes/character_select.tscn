@@ -1,0 +1,174 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/character_select.gd" id="1_select"]
+
+[node name="CharacterSelect" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_select")
+
+[node name="ColorRect" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.09, 0.095, 0.12, 1)
+
+[node name="MarginContainer" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 24
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 24
+
+[node name="RootColumn" type="VBoxContainer" parent="MarginContainer"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="MainRow" type="HBoxContainer" parent="MarginContainer/RootColumn"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 22
+
+[node name="PreviewPanel" type="Panel" parent="MarginContainer/RootColumn/MainRow"]
+custom_minimum_size = Vector2(500, 520)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="PreviewMargin" type="MarginContainer" parent="MarginContainer/RootColumn/MainRow/PreviewPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="PreviewColumn" type="VBoxContainer" parent="MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 12
+
+[node name="TitleLabel" type="Label" parent="MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Choisis ton personnage"
+
+[node name="SelectedNameLabel" type="Label" parent="MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Couleur choisie : Rouge"
+
+[node name="ViewportFrame" type="Panel" parent="MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn"]
+custom_minimum_size = Vector2(0, 408)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn/ViewportFrame"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+grow_horizontal = 2
+grow_vertical = 2
+stretch = true
+
+[node name="SubViewport" type="SubViewport" parent="MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn/ViewportFrame/SubViewportContainer"]
+size = Vector2i(428, 384)
+transparent_bg = false
+handle_input_locally = false
+msaa_3d = 1
+use_hdr_2d = true
+
+[node name="OptionsPanel" type="Panel" parent="MarginContainer/RootColumn/MainRow"]
+custom_minimum_size = Vector2(420, 520)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="OptionsMargin" type="MarginContainer" parent="MarginContainer/RootColumn/MainRow/OptionsPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 16
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 16
+theme_override_constants/margin_bottom = 16
+
+[node name="OptionsColumn" type="VBoxContainer" parent="MarginContainer/RootColumn/MainRow/OptionsPanel/OptionsMargin"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 14
+
+[node name="HintLabel" type="Label" parent="MarginContainer/RootColumn/MainRow/OptionsPanel/OptionsMargin/OptionsColumn"]
+layout_mode = 2
+autowrap_mode = 3
+theme_override_font_sizes/font_size = 18
+text = "Selectionne une couleur pour ton personnage avant de lancer la partie."
+
+[node name="ScrollContainer" type="ScrollContainer" parent="MarginContainer/RootColumn/MainRow/OptionsPanel/OptionsMargin/OptionsColumn"]
+custom_minimum_size = Vector2(0, 392)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="OptionsGrid" type="GridContainer" parent="MarginContainer/RootColumn/MainRow/OptionsPanel/OptionsMargin/OptionsColumn/ScrollContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 12
+columns = 2
+
+[node name="PseudoRow" type="HBoxContainer" parent="MarginContainer/RootColumn"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="PseudoLabel" type="Label" parent="MarginContainer/RootColumn/PseudoRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(120, 38)
+theme_override_font_sizes/font_size = 20
+text = "Pseudo"
+
+[node name="PseudoLineEdit" type="LineEdit" parent="MarginContainer/RootColumn/PseudoRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(320, 46)
+theme_override_font_sizes/font_size = 20
+placeholder_text = "Entrez votre pseudo"
+max_length = 24
+
+[node name="BottomRow" type="HBoxContainer" parent="MarginContainer/RootColumn"]
+layout_mode = 2
+alignment = 2
+theme_override_constants/separation = 16
+
+[node name="BackButton" type="Button" parent="MarginContainer/RootColumn/BottomRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(170, 50)
+text = "Retour"
+
+[node name="StartButton" type="Button" parent="MarginContainer/RootColumn/BottomRow"]
+layout_mode = 2
+custom_minimum_size = Vector2(190, 50)
+text = "Lancer la partie"

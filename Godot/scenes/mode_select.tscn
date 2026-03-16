@@ -1,0 +1,84 @@
+[gd_scene format=3 uid="uid://bx8jq1ih5mr1u"]
+
+[ext_resource type="Script" uid="uid://c2spar38opgjo" path="res://scripts/mode_select.gd" id="1_mode"]
+
+[node name="ModeSelect" type="Control" unique_id=804013536]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_mode")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1459642171]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.09, 0.12, 1)
+
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1653638842]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="Panel" parent="CenterContainer" unique_id=1954180090]
+custom_minimum_size = Vector2(460, 360)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/Panel" unique_id=30897701]
+layout_mode = 0
+offset_left = 32.0
+offset_top = 28.0
+offset_right = 428.0
+offset_bottom = 328.0
+theme_override_constants/separation = 18
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/Panel/VBoxContainer" unique_id=334057417]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Choix du mode"
+horizontal_alignment = 1
+
+[node name="SubtitleLabel" type="Label" parent="CenterContainer/Panel/VBoxContainer" unique_id=937391503]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Selectionne comment tu veux jouer"
+horizontal_alignment = 1
+
+[node name="SpacerTop" type="Control" parent="CenterContainer/Panel/VBoxContainer" unique_id=1578123326]
+custom_minimum_size = Vector2(0, 16)
+layout_mode = 2
+
+[node name="SoloButton" type="Button" parent="CenterContainer/Panel/VBoxContainer" unique_id=1731772349]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+text = "Solo"
+
+[node name="MultiplayerButton" type="Button" parent="CenterContainer/Panel/VBoxContainer" unique_id=391255553]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+text = "Multijoueurs"
+
+[node name="InfoLabel" type="Label" parent="CenterContainer/Panel/VBoxContainer" unique_id=1826677790]
+custom_minimum_size = Vector2(0, 50)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="SpacerBottom" type="Control" parent="CenterContainer/Panel/VBoxContainer" unique_id=99036040]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="BackButton" type="Button" parent="CenterContainer/Panel/VBoxContainer" unique_id=1893553299]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Retour"

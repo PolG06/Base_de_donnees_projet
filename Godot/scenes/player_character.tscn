@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=3 uid="uid://dwf0nly7a2cu7"]
+
+[ext_resource type="Script" path="res://scripts/player_character.gd" id="1_d0r7u"]
+
+[node name="PlayerCharacter" type="CharacterBody3D"]
+script = ExtResource("1_d0r7u")
+
+[node name="BodyRoot" type="Node3D" parent="."]
+
+[node name="Muzzle" type="Marker3D" parent="BodyRoot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.55, 1.25, -0.95)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]

@@ -27,6 +27,7 @@ const PRE_LIGHT_OBSERVE_TIME := 6.0 # Délai d'observation avant les tirs
 const ROUND_TRANSITION_FADE_IN := 0.35
 const ROUND_TRANSITION_HOLD := 1.6
 const ROUND_TRANSITION_FADE_OUT := 0.45
+const DATABASE_PATH := "res://../Database_sqlite/database.db"
 
 enum Phase { DARK, LIGHT, ROUND_END, GAME_OVER }
 
@@ -66,6 +67,7 @@ var daylight_environment: Environment
 var is_pause_menu_open: bool = false
 var is_pause_settings_open: bool = false
 var is_game_over_screen_open: bool = false
+var has_saved_match: bool = false
 var pause_waiting_action_id: String = ""
 var pause_action_buttons: Dictionary = {}
 var pause_volume_slider: HSlider
@@ -149,6 +151,7 @@ func _ready() -> void:
 	_sync_controller_camera_to_player()
 	_update_platform_size()
 	_start_dark_phase()
+	refresh_database_schema()
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Gestion des interactions (pause, spectateur, caméra souris/gyro).
@@ -1188,6 +1191,7 @@ func _end_match() -> void:
 	if is_game_over_screen_open:
 		return
 	phase = Phase.GAME_OVER
+	_save_match_result()
 	_show_game_over_screen()
 
 func _show_game_over_screen() -> void:
@@ -1208,7 +1212,7 @@ func _show_game_over_screen() -> void:
 	MenuAudio.connect_buttons(game_over_overlay)
 	game_over_restart_button.call_deferred("grab_focus")
 
-func _build_ranking_text() -> String:
+func _compute_final_ranking() -> Array[PlayerCharacter]:
 	var ranking: Array[PlayerCharacter] = []
 	for survivor: PlayerCharacter in _get_alive_players():
 		if not ranking.has(survivor):
@@ -1220,12 +1224,55 @@ func _build_ranking_text() -> String:
 	for player: PlayerCharacter in players:
 		if not ranking.has(player):
 			ranking.append(player)
+	return ranking
 
+func _get_player_rank(target_player: PlayerCharacter, ranking: Array[PlayerCharacter]) -> int:
+	if target_player == null:
+		return -1
+	var index: int = ranking.find(target_player)
+	return index + 1 if index != -1 else -1
+
+func _build_ranking_text() -> String:
+	var ranking: Array[PlayerCharacter] = _compute_final_ranking()
 	var lines: Array[String] = []
 	for i: int in range(ranking.size()):
 		var player: PlayerCharacter = ranking[i]
 		lines.append("%d. %s" % [i + 1, player.player_name])
 	return "\n".join(lines)
+
+func _save_match_result() -> void:
+	if has_saved_match:
+		return
+	if human_player == null:
+		return
+	var ranking: Array[PlayerCharacter] = _compute_final_ranking()
+	var player_rank: int = _get_player_rank(human_player, ranking)
+	if player_rank <= 0:
+		return
+	var selected_character: Dictionary = GameState.get_selected_character()
+	var skin_id: String = selected_character.get("id", "unknown")
+	var difficulty_for_db: String = _map_difficulty_for_db(GameState.selected_bot_difficulty)
+	register_score_in_database(
+		human_player.player_name,
+		player_rank,
+		skin_id,
+		difficulty_for_db,
+		GameState.selected_bot_count,
+		GameState.selected_game_mode
+	)
+	has_saved_match = true
+
+func _map_difficulty_for_db(value: String) -> String:
+	var normalized: String = value.to_lower()
+	match normalized:
+		GameState.BOT_DIFFICULTY_BEGINNER, "easy", "debutant":
+			return "easy"
+		GameState.BOT_DIFFICULTY_HARD, "hard", "difficile":
+			return "hard"
+		GameState.BOT_DIFFICULTY_NORMAL, "normal":
+			return "normal"
+		_:
+			return "normal"
 
 func _get_alive_players() -> Array[PlayerCharacter]:
 	var alive: Array[PlayerCharacter] = []
@@ -1436,3 +1483,46 @@ func _is_mouse_inside_viewport() -> bool:
 	var pos: Vector2 = get_viewport().get_mouse_position()
 	var size: Vector2 = get_viewport().get_visible_rect().size
 	return pos.x >= 0.0 and pos.y >= 0.0 and pos.x <= size.x and pos.y <= size.y
+
+func refresh_database_schema() -> void:
+	var db: SQLite = SQLite.new()
+	db.path = _get_database_path()
+	if not db.open_db():
+		printerr("Impossible d'ouvrir ou de créer la base SQLite à l'emplacement %s" % db.path)
+		return
+	_ensure_results_table(db)
+	db.close_db()
+
+func register_score_in_database(name, position, skin, difficulty_selected, number_of_bots, mode: String = "solo") -> void:
+	var db: SQLite = SQLite.new()
+	db.path = _get_database_path()
+	if not db.open_db():
+		printerr("Impossible d'ouvrir la base SQLite à l'emplacement %s" % db.path)
+		return
+	_ensure_results_table(db)
+	var row := {
+		"name": name,
+		"position": position,
+		"skin": skin,
+		"difficulty_selected": _map_difficulty_for_db(str(difficulty_selected)),
+		"mode_selected": mode,
+		"number_of_bots": number_of_bots
+	}
+	db.insert_row("Resultats", row)
+	db.close_db()
+
+func _get_database_path() -> String:
+	return ProjectSettings.globalize_path(DATABASE_PATH)
+
+func _ensure_results_table(db: SQLite) -> void:
+	db.query("""
+		CREATE TABLE IF NOT EXISTS Resultats (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT NOT NULL,
+			position INT,
+			skin VARCHAR(30),
+			difficulty_selected TEXT CHECK (difficulty_selected IN ('easy', 'normal', 'hard')),
+			mode_selected TEXT CHECK (mode_selected IN ('solo', 'multiplayer', 'difficile')),
+			number_of_bots INT
+		)
+	""")

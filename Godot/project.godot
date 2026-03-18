@@ -21,6 +21,10 @@ GameState="*res://scripts/game_state.gd"
 MenuMusic="*res://scripts/menu_music.gd"
 MenuAudio="*res://scripts/menu_audio.gd"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godot-sqlite/plugin.cfg")
+
 [input]
 
 ui_accept={

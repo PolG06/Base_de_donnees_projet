@@ -1,11 +1,13 @@
 extends Node3D
 
-# Script principal qui orchestre une partie : phases, joueurs, caméra, UI.
+# Coeur du jeu : orchestre les phases sombre/lumi�re, encha�ne les manches,
+# pilote les joueurs (humain + bots), la cam�ra orbitale et l'UI/menus,
+# et enregistre les scores dans la base SQLite.
 
 const PLAYER_SCENE := preload("res://scenes/player_character.tscn")
 const PROJECTILE_SCENE := preload("res://scenes/projectile.tscn")
 
-const DARK_DURATION := 12.0 # Durée de base de la phase déplacement (décroît ensuite)
+const DARK_DURATION := 12.0 # Duree de base de la phase deplacement (decroit ensuite)
 const LIGHT_SHOT_DELAY := 0.8
 const START_RADIUS := 10.5 # Rayon initial de l'arène
 const MIN_RADIUS := 3.5
@@ -32,53 +34,57 @@ const ROUND_TRANSITION_HOLD := 2.6
 const ROUND_TRANSITION_FADE_OUT := 0.55
 const DATABASE_PATH := "res://../Database_sqlite/database.db"
 
-enum Phase { DARK, LIGHT, ROUND_END, GAME_OVER }
+enum PhaseJeu { DARK, LIGHT, ROUND_END, GAME_OVER }
 
-# État global de la partie
-var generateur_aleatoire: RandomNumberGenerator = RandomNumberGenerator.new()
-var joueurs: Array[PlayerCharacter] = []
-var ordre_elimination: Array[PlayerCharacter] = []
-var joueur_humain: PlayerCharacter
-var joueur_spectate: PlayerCharacter
+# �?tat global de la partie
+var aleatoire_partie: RandomNumberGenerator = RandomNumberGenerator.new()
+var joueurs_partie: Array[PlayerCharacter] = []
+var ordre_eliminations: Array[PlayerCharacter] = []
+var joueur_humain_principal: PlayerCharacter
+var joueur_spectateur_cible: PlayerCharacter
 var tween_transition_manche: Tween
 var centre_arene: Vector3 = Vector3.ZERO
-var rayon_arene: float = START_RADIUS
-var numero_manche: int = 1
-var phase: Phase = Phase.DARK
+var rayon_arene_courant: float = START_RADIUS
+var numero_manche_courant: int = 1
+var phase_jeu: PhaseJeu = PhaseJeu.DARK
 var temps_phase_restant: float = DARK_DURATION
-var file_tirs: Array[PlayerCharacter] = []
-var delai_tir_restant: float = LIGHT_SHOT_DELAY
-var phase_lumineuse_revelee: bool = false
-var temps_observation_lumiere: float = 0.0
-var camera_libre_active: bool = false
-var camera_libre_lacet: float = 0.0
-var camera_libre_tangage: float = 0.0
-var cible_camera_libre: PlayerCharacter
-var camera_souris_lacet: float = 0.0
-var camera_souris_tangage: float = 0.32
-var souris_dans_vue: bool = true
+var file_tirs_ordonnee: Array[PlayerCharacter] = []
+var delai_avant_tir: float = LIGHT_SHOT_DELAY
+var phase_lumiere_revelee: bool = false
+var temps_observation_phase_lumiere: float = 0.0
+var mode_camera_libre_actif: bool = false
+var lacet_camera_libre: float = 0.0
+var tangage_camera_libre: float = 0.0
+var cible_camera_suivie: PlayerCharacter
+var lacet_camera_souris: float = 0.0
+var tangage_camera_souris: float = 0.32
+var souris_dans_viewport: bool = true
 var gyro_actif: bool = false
-var vitesse_lacet_gyro: float = 0.0
-var vitesse_tangage_gyro: float = 0.0
-var distance_camera: float = CAMERA_DISTANCE_DEFAUT
-var stone_material: StandardMaterial3D
-var lava_material: StandardMaterial3D
-var nether_rock_material: StandardMaterial3D
-var basalt_material: StandardMaterial3D
-var glowstone_material: StandardMaterial3D
-var darkness_environment: Environment
-var daylight_environment: Environment
-var menu_pause_ouvert: bool = false
-var parametres_pause_ouverts: bool = false
-var ecran_fin_ouvert: bool = false
-var partie_enregistree: bool = false
-var id_action_pause_attendue: String = ""
-var boutons_actions_pause: Dictionary = {}
-var curseur_volume_pause: HSlider
-var etiquette_valeur_volume_pause: Label
+var vitesse_lacet_gyro_mode: float = 0.0
+var vitesse_tangage_gyro_mode: float = 0.0
+var distance_camera_courante: float = CAMERA_DISTANCE_DEFAUT
+var materiau_pierre: StandardMaterial3D
+var materiau_lave: StandardMaterial3D
+var materiau_roche_nether: StandardMaterial3D
+var materiau_basalte: StandardMaterial3D
+var materiau_pierre_luisante: StandardMaterial3D
+var environnement_obscurite: Environment
+var environnement_lumiere: Environment
+var menu_pause_visible: bool = false
+var panneau_parametres_pause_visible: bool = false
+var ecran_fin_visible: bool = false
+var score_deja_enregistre: bool = false
+var action_pause_en_attente: String = ""
+var boutons_actions_pause_map: Dictionary = {}
+var curseur_volume_general: HSlider
+var etiquette_valeur_volume_general: Label
 var lacet_camera_manette: float = 0.0
 var tangage_camera_manette: float = 0.18
-var camera_manette_active: bool = false
+var controle_camera_manette_actif: bool = false
+var transition_en_cours: bool = false
+var overlay_mort: ColorRect
+var etiquette_mort: Label
+var overlay_mort_actif: bool = false
 
 @onready var camera: Camera3D = $Camera3D
 @onready var lumiere_soleil: DirectionalLight3D = $SunLight
@@ -115,6 +121,7 @@ var mesh_plateforme: MeshInstance3D
 var collision_plateforme: CollisionShape3D
 var mesh_lave: MeshInstance3D
 
+# Initialise l'UI, l'environnement, l'audio, l'arene et fait apparaitre les joueurs.
 func _ready() -> void:
 	# Initialisation des références, UI et environnement de jeu.
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -144,11 +151,12 @@ func _ready() -> void:
 	bouton_fin_rejouer.text = "Sélection du mode"
 	bouton_quitter_spectateur.pressed.connect(_sur_spectateur_quitter_presse)
 	bouton_quitter_spectateur.text = "Quitter le mode spectateur"
+	_creer_overlay_mort()
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	overlay_transition_manche.visible = false
 	panneau_ordre.visible = false
 	etiquette_notification.visible = false
-	generateur_aleatoire.randomize()
+	aleatoire_partie.randomize()
 	_creer_materiaux()
 	_creer_environnement()
 	_ajuster_arene_nombre_joueurs()
@@ -159,43 +167,46 @@ func _ready() -> void:
 	_demarrer_phase_obscure()
 	rafraichir_schema_bdd()
 
+# G�re les entr�es globales : rebind pause, mode spectateur, zoom molette, pause.
 func _unhandled_input(event: InputEvent) -> void:
 	# Gestion des interactions (pause, spectateur, caméra souris/gyro).
-	if id_action_pause_attendue != "" and event is InputEventKey:
+	if overlay_mort_actif:
+		return
+	if action_pause_en_attente != "" and event is InputEventKey:
 		var key_event: InputEventKey = event as InputEventKey
 		if key_event.pressed and not key_event.echo:
 			var keycode: Key = key_event.physical_keycode if key_event.physical_keycode != 0 else key_event.keycode
-			GameState.reaffecter_action(id_action_pause_attendue, keycode)
-			etiquette_statut_parametres_pause.text = "%s : %s" % [GameState.obtenir_nom_action(id_action_pause_attendue), GameState.obtenir_resume_assignation_action(id_action_pause_attendue)]
-			id_action_pause_attendue = ""
+			GameState.reaffecter_action(action_pause_en_attente, keycode)
+			etiquette_statut_parametres_pause.text = "%s : %s" % [GameState.obtenir_nom_action(action_pause_en_attente), GameState.obtenir_resume_assignation_action(action_pause_en_attente)]
+			action_pause_en_attente = ""
 			_rafraichir_boutons_parametres_pause()
 			get_viewport().set_input_as_handled()
 			return
-	if phase == Phase.GAME_OVER:
+	if phase_jeu == PhaseJeu.GAME_OVER:
 		return
-	var is_spectating: bool = joueur_humain != null and not joueur_humain.est_vivant
+	var is_spectating: bool = joueur_humain_principal != null and not joueur_humain_principal.est_vivant
 	if event is InputEventMouseMotion and not get_tree().paused:
 		var motion_any: InputEventMouseMotion = event as InputEventMouseMotion
-		camera_souris_lacet -= motion_any.relative.x * 0.005
-		camera_souris_tangage = clamp(camera_souris_tangage + motion_any.relative.y * 0.003, CAMERA_CONTROLLER_PITCH_MIN, CAMERA_CONTROLLER_PITCH_MAX)
-		vitesse_lacet_gyro = -motion_any.relative.x * 0.005 * GYRO_SPEED_SCALE
-		vitesse_tangage_gyro = motion_any.relative.y * 0.003 * GYRO_SPEED_SCALE
+		lacet_camera_souris -= motion_any.relative.x * 0.005
+		tangage_camera_souris = clamp(tangage_camera_souris + motion_any.relative.y * 0.003, CAMERA_CONTROLLER_PITCH_MIN, CAMERA_CONTROLLER_PITCH_MAX)
+		vitesse_lacet_gyro_mode = -motion_any.relative.x * 0.005 * GYRO_SPEED_SCALE
+		vitesse_tangage_gyro_mode = motion_any.relative.y * 0.003 * GYRO_SPEED_SCALE
 		if is_spectating:
-			camera_libre_active = true
-			cible_camera_libre = joueur_spectate
-			camera_libre_lacet = camera_souris_lacet
-			camera_libre_tangage = camera_souris_tangage
+			mode_camera_libre_actif = true
+			cible_camera_suivie = joueur_spectateur_cible
+			lacet_camera_libre = lacet_camera_souris
+			tangage_camera_libre = tangage_camera_souris
 		get_viewport().set_input_as_handled()
 		return
 	if is_spectating and event is InputEventMouseButton:
 		var mouse_event: InputEventMouseButton = event as InputEventMouseButton
 		if mouse_event.pressed and not mouse_event.double_click:
 			if mouse_event.button_index == MOUSE_BUTTON_LEFT:
-				_alterner_joueur_spectate(1)
+				_alterner_joueur_spectateur_cible(1)
 				get_viewport().set_input_as_handled()
 				return
 			if mouse_event.button_index == MOUSE_BUTTON_RIGHT:
-				_alterner_joueur_spectate(-1)
+				_alterner_joueur_spectateur_cible(-1)
 				get_viewport().set_input_as_handled()
 				return
 	if event is InputEventMouseButton:
@@ -210,42 +221,53 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				return
 	if event.is_action_pressed("toggle_pause"):
-		if parametres_pause_ouverts:
+		if panneau_parametres_pause_visible:
 			_sur_retour_parametres_pause_presse()
 		else:
 			_basculer_menu_pause()
 		get_viewport().set_input_as_handled()
 
+# Boucle physique : avance la phase en cours (sombre/lumiere/fin), camera et UI.
 func _physics_process(delta: float) -> void:
-	# Boucle physique : avance la phase courante, caméra, UI.
+	# Boucle physique : avance la phase_jeu courante, caméra, UI.
+	if overlay_mort_actif:
+		_mettre_a_jour_camera(delta)
+		_mettre_a_jour_ui()
+		return
+	if transition_en_cours:
+		_mettre_a_jour_camera(delta)
+		_mettre_a_jour_ui()
+		return
 	if get_tree().paused:
 		_mettre_a_jour_ui()
 		return
-	match phase:
-		Phase.DARK:
+	match phase_jeu:
+		PhaseJeu.DARK:
 			_mettre_a_jour_phase_obscure(delta)
-		Phase.LIGHT:
+		PhaseJeu.LIGHT:
 			_mettre_a_jour_phase_lumineuse(delta)
-		Phase.ROUND_END:
+		PhaseJeu.ROUND_END:
 			_mettre_a_jour_fin_manche(delta)
-		Phase.GAME_OVER:
+		PhaseJeu.GAME_OVER:
 			pass
 	_mettre_a_jour_camera(delta)
 	_mettre_a_jour_ui()
 
+# Ouvre ou ferme le menu pause selon l'etat et ignore si ecran de fin.
 func _basculer_menu_pause() -> void:
 	# Ouvre/ferme le menu pause.
-	if ecran_fin_ouvert:
+	if ecran_fin_visible:
 		return
-	if menu_pause_ouvert:
+	if menu_pause_visible:
 		_fermer_menu_pause()
 	else:
 		_ouvrir_menu_pause()
 
+# Met en pause, affiche le menu principal de pause et reinitialise l'etat d'attente de touche.
 func _ouvrir_menu_pause() -> void:
-	menu_pause_ouvert = true
-	parametres_pause_ouverts = false
-	id_action_pause_attendue = ""
+	menu_pause_visible = true
+	panneau_parametres_pause_visible = false
+	action_pause_en_attente = ""
 	_rafraichir_boutons_parametres_pause()
 	MenuAudio.connecter_boutons(self)
 	etiquette_statut_parametres_pause.text = GameState.cle_traduction("settings_status_default")
@@ -255,47 +277,53 @@ func _ouvrir_menu_pause() -> void:
 	get_tree().paused = true
 	bouton_reprendre.call_deferred("grab_focus")
 
+# Ferme pause et reprend le jeu en reinitialisant les drapeaux.
 func _fermer_menu_pause() -> void:
-	menu_pause_ouvert = false
-	parametres_pause_ouverts = false
-	id_action_pause_attendue = ""
+	menu_pause_visible = false
+	panneau_parametres_pause_visible = false
+	action_pause_en_attente = ""
 	overlay_pause.visible = false
 	vbox_menu_pause.visible = true
 	panneau_parametres_pause.visible = false
 	get_tree().paused = false
 
+# Bouton Reprendre : ferme simplement le menu pause.
 func _sur_reprendre_presse() -> void:
 	_fermer_menu_pause()
 
+# Bouton Parametres : ouvre la colonne de rebind, remet le texte de statut.
 func _sur_parametres_pause_presse() -> void:
-	parametres_pause_ouverts = true
-	id_action_pause_attendue = ""
+	panneau_parametres_pause_visible = true
+	action_pause_en_attente = ""
 	_rafraichir_boutons_parametres_pause()
 	MenuAudio.connecter_boutons(self)
 	etiquette_statut_parametres_pause.text = GameState.cle_traduction("settings_status_default")
 	vbox_menu_pause.visible = false
 	panneau_parametres_pause.visible = true
-	if boutons_actions_pause.has("ui_up"):
-		(boutons_actions_pause["ui_up"] as Button).call_deferred("grab_focus")
+	if boutons_actions_pause_map.has("ui_up"):
+		(boutons_actions_pause_map["ui_up"] as Button).call_deferred("grab_focus")
 
+# Bouton Retour des parametres : revient au menu pause principal.
 func _sur_retour_parametres_pause_presse() -> void:
-	parametres_pause_ouverts = false
-	id_action_pause_attendue = ""
+	panneau_parametres_pause_visible = false
+	action_pause_en_attente = ""
 	panneau_parametres_pause.visible = false
 	vbox_menu_pause.visible = true
 	bouton_parametres_pause.call_deferred("grab_focus")
 
+# Quand on clique sur une action a reconfigurer, on passe en mode attente de touche.
 func _sur_action_parametre_pause_presse(action_id: String) -> void:
-	id_action_pause_attendue = action_id
+	action_pause_en_attente = action_id
 	etiquette_statut_parametres_pause.text = GameState.cle_traduction("settings_waiting") % [GameState.obtenir_nom_action(action_id), GameState.obtenir_texte_manette_action(action_id)]
 	_rafraichir_boutons_parametres_pause()
 
+# Reconstruit dynamiquement la liste des actions/boutons + le slider de volume.
 func _construire_lignes_parametres_pause() -> void:
 	for child: Node in liste_parametres_pause.get_children():
 		child.queue_free()
-	boutons_actions_pause.clear()
-	curseur_volume_pause = null
-	etiquette_valeur_volume_pause = null
+	boutons_actions_pause_map.clear()
+	curseur_volume_general = null
+	etiquette_valeur_volume_general = null
 
 	for binding: Dictionary in GameState.LIAISONS_ACTIONS:
 		var row: HBoxContainer = HBoxContainer.new()
@@ -312,7 +340,7 @@ func _construire_lignes_parametres_pause() -> void:
 		button.custom_minimum_size = Vector2(220, 46)
 		button.pressed.connect(_sur_action_parametre_pause_presse.bind(binding["id"]))
 		row.add_child(button)
-		boutons_actions_pause[binding["id"]] = button
+		boutons_actions_pause_map[binding["id"]] = button
 
 	var volume_row: HBoxContainer = HBoxContainer.new()
 	volume_row.add_theme_constant_override("separation", 12)
@@ -329,21 +357,21 @@ func _construire_lignes_parametres_pause() -> void:
 	volume_box.add_theme_constant_override("separation", 10)
 	volume_row.add_child(volume_box)
 
-	curseur_volume_pause = HSlider.new()
-	curseur_volume_pause.min_value = 0.0
-	curseur_volume_pause.max_value = 1.0
-	curseur_volume_pause.step = 0.01
-	curseur_volume_pause.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	curseur_volume_pause.custom_minimum_size = Vector2(140, 46)
-	curseur_volume_pause.value = GameState.obtenir_volume_general()
-	curseur_volume_pause.value_changed.connect(_sur_volume_pause_change)
-	volume_box.add_child(curseur_volume_pause)
+	curseur_volume_general = HSlider.new()
+	curseur_volume_general.min_value = 0.0
+	curseur_volume_general.max_value = 1.0
+	curseur_volume_general.step = 0.01
+	curseur_volume_general.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	curseur_volume_general.custom_minimum_size = Vector2(140, 46)
+	curseur_volume_general.value = GameState.obtenir_volume_general()
+	curseur_volume_general.value_changed.connect(_sur_volume_pause_change)
+	volume_box.add_child(curseur_volume_general)
 
-	etiquette_valeur_volume_pause = Label.new()
-	etiquette_valeur_volume_pause.custom_minimum_size = Vector2(70, 46)
-	etiquette_valeur_volume_pause.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	etiquette_valeur_volume_pause.text = GameState.obtenir_texte_volume_general()
-	volume_box.add_child(etiquette_valeur_volume_pause)
+	etiquette_valeur_volume_general = Label.new()
+	etiquette_valeur_volume_general.custom_minimum_size = Vector2(70, 46)
+	etiquette_valeur_volume_general.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	etiquette_valeur_volume_general.text = GameState.obtenir_texte_volume_general()
+	volume_box.add_child(etiquette_valeur_volume_general)
 
 	var aim_row: HBoxContainer = HBoxContainer.new()
 	aim_row.add_theme_constant_override("separation", 12)
@@ -363,112 +391,121 @@ func _construire_lignes_parametres_pause() -> void:
 
 	MenuAudio.connecter_boutons(liste_parametres_pause)
 
+# Mets a jour libelles des boutons (resume des touches ou message d'attente) et valeurs de volume.
 func _rafraichir_boutons_parametres_pause() -> void:
 	for binding: Dictionary in GameState.LIAISONS_ACTIONS:
 		var action_id: String = binding["id"]
-		var button: Button = boutons_actions_pause.get(action_id, null)
+		var button: Button = boutons_actions_pause_map.get(action_id, null)
 		if button == null:
 			continue
-		button.text = GameState.cle_traduction("settings_press_key") if action_id == id_action_pause_attendue else GameState.obtenir_resume_assignation_action(action_id)
-	if curseur_volume_pause != null:
-		curseur_volume_pause.set_value_no_signal(GameState.obtenir_volume_general())
-	if etiquette_valeur_volume_pause != null:
-		etiquette_valeur_volume_pause.text = GameState.obtenir_texte_volume_general()
+		button.text = GameState.cle_traduction("settings_press_key") if action_id == action_pause_en_attente else GameState.obtenir_resume_assignation_action(action_id)
+	if curseur_volume_general != null:
+		curseur_volume_general.set_value_no_signal(GameState.obtenir_volume_general())
+	if etiquette_valeur_volume_general != null:
+		etiquette_valeur_volume_general.text = GameState.obtenir_texte_volume_general()
 
+# Slider volume : met a jour GameState + texte, indique l'etat si pas en rebind.
 func _sur_volume_pause_change(value: float) -> void:
 	GameState.definir_volume_general(value)
-	if etiquette_valeur_volume_pause != null:
-		etiquette_valeur_volume_pause.text = GameState.obtenir_texte_volume_general()
-	if id_action_pause_attendue == "":
+	if etiquette_valeur_volume_general != null:
+		etiquette_valeur_volume_general.text = GameState.obtenir_texte_volume_general()
+	if action_pause_en_attente == "":
 		etiquette_statut_parametres_pause.text = GameState.cle_traduction("settings_volume_status")
 
+# Quitter depuis pause : reprend le jeu et charge menu principal.
 func _sur_quitter_presse() -> void:
 	get_tree().paused = false
-	menu_pause_ouvert = false
-	parametres_pause_ouverts = false
-	id_action_pause_attendue = ""
-	ecran_fin_ouvert = false
+	menu_pause_visible = false
+	panneau_parametres_pause_visible = false
+	action_pause_en_attente = ""
+	ecran_fin_visible = false
 	get_tree().change_scene_to_file("res://scenes/menu_main.tscn")
 
+# Rejouer (ici redirige vers selection de mode) depuis l'ecran de fin.
 func _sur_rejouer_presse() -> void:
 	get_tree().paused = false
-	menu_pause_ouvert = false
-	parametres_pause_ouverts = false
-	id_action_pause_attendue = ""
-	ecran_fin_ouvert = false
+	menu_pause_visible = false
+	panneau_parametres_pause_visible = false
+	action_pause_en_attente = ""
+	ecran_fin_visible = false
 	get_tree().change_scene_to_file("res://scenes/mode_select.tscn")
 
+# Quitter definitif depuis l'ecran de fin : ferme le jeu.
 func _sur_fin_quitter_presse() -> void:
 	get_tree().quit()
 
+# Initialise les materiaux des meshes (plateforme, lave, roches, glowstone).
 func _creer_materiaux() -> void:
-	stone_material = StandardMaterial3D.new()
-	stone_material.albedo_texture = _creer_texture_reference_plateforme()
-	stone_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	stone_material.uv1_scale = Vector3(8, 8, 8)
-	stone_material.roughness = 1.0
+	materiau_pierre = StandardMaterial3D.new()
+	materiau_pierre.albedo_texture = _creer_texture_reference_plateforme()
+	materiau_pierre.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	materiau_pierre.uv1_scale = Vector3(8, 8, 8)
+	materiau_pierre.roughness = 1.0
 
-	lava_material = StandardMaterial3D.new()
-	lava_material.albedo_texture = _creer_texture_reference_lave()
-	lava_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	lava_material.uv1_scale = Vector3(24, 24, 24)
-	lava_material.emission_enabled = true
-	lava_material.emission_texture = lava_material.albedo_texture
-	lava_material.emission = Color(1.0, 0.45, 0.1)
-	lava_material.emission_energy_multiplier = 1.9
-	lava_material.roughness = 0.78
+	materiau_lave = StandardMaterial3D.new()
+	materiau_lave.albedo_texture = _creer_texture_reference_lave()
+	materiau_lave.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	materiau_lave.uv1_scale = Vector3(24, 24, 24)
+	materiau_lave.emission_enabled = true
+	materiau_lave.emission_texture = materiau_lave.albedo_texture
+	materiau_lave.emission = Color(1.0, 0.45, 0.1)
+	materiau_lave.emission_energy_multiplier = 1.9
+	materiau_lave.roughness = 0.78
 
-	nether_rock_material = StandardMaterial3D.new()
-	nether_rock_material.albedo_texture = _creer_texture_roche_nether()
-	nether_rock_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	nether_rock_material.uv1_scale = Vector3(10, 10, 10)
-	nether_rock_material.roughness = 1.0
+	materiau_roche_nether = StandardMaterial3D.new()
+	materiau_roche_nether.albedo_texture = _creer_texture_roche_nether()
+	materiau_roche_nether.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	materiau_roche_nether.uv1_scale = Vector3(10, 10, 10)
+	materiau_roche_nether.roughness = 1.0
 
-	basalt_material = StandardMaterial3D.new()
-	basalt_material.albedo_texture = _creer_texture_basalte()
-	basalt_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	basalt_material.uv1_scale = Vector3(7, 7, 7)
-	basalt_material.roughness = 1.0
+	materiau_basalte = StandardMaterial3D.new()
+	materiau_basalte.albedo_texture = _creer_texture_basalte()
+	materiau_basalte.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	materiau_basalte.uv1_scale = Vector3(7, 7, 7)
+	materiau_basalte.roughness = 1.0
 
-	glowstone_material = StandardMaterial3D.new()
-	glowstone_material.albedo_texture = _creer_texture_pierre_luisante()
-	glowstone_material.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
-	glowstone_material.uv1_scale = Vector3(6, 6, 6)
-	glowstone_material.emission_enabled = true
-	glowstone_material.emission_texture = glowstone_material.albedo_texture
-	glowstone_material.emission = Color(1.0, 0.72, 0.2)
-	glowstone_material.emission_energy_multiplier = 2.35
+	materiau_pierre_luisante = StandardMaterial3D.new()
+	materiau_pierre_luisante.albedo_texture = _creer_texture_pierre_luisante()
+	materiau_pierre_luisante.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+	materiau_pierre_luisante.uv1_scale = Vector3(6, 6, 6)
+	materiau_pierre_luisante.emission_enabled = true
+	materiau_pierre_luisante.emission_texture = materiau_pierre_luisante.albedo_texture
+	materiau_pierre_luisante.emission = Color(1.0, 0.72, 0.2)
+	materiau_pierre_luisante.emission_energy_multiplier = 2.35
 
+# Configure deux environnements (lumiere/obscurite) et assigne celui de depart.
 func _creer_environnement() -> void:
-	daylight_environment = Environment.new()
-	daylight_environment.background_mode = Environment.BG_COLOR
-	daylight_environment.background_color = Color(0.22, 0.03, 0.03)
-	daylight_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	daylight_environment.ambient_light_color = Color(0.9, 0.28, 0.18)
-	daylight_environment.ambient_light_energy = 0.55
-	daylight_environment.fog_enabled = true
-	daylight_environment.fog_light_color = Color(0.95, 0.25, 0.12)
-	daylight_environment.fog_light_energy = 0.7
-	daylight_environment.fog_density = 0.012
-	daylight_environment.tonemap_exposure = 1.05
+	environnement_lumiere = Environment.new()
+	environnement_lumiere.background_mode = Environment.BG_COLOR
+	environnement_lumiere.background_color = Color(0.22, 0.03, 0.03)
+	environnement_lumiere.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environnement_lumiere.ambient_light_color = Color(0.9, 0.28, 0.18)
+	environnement_lumiere.ambient_light_energy = 0.55
+	environnement_lumiere.fog_enabled = true
+	environnement_lumiere.fog_light_color = Color(0.95, 0.25, 0.12)
+	environnement_lumiere.fog_light_energy = 0.7
+	environnement_lumiere.fog_density = 0.012
+	environnement_lumiere.tonemap_exposure = 1.05
 
-	darkness_environment = Environment.new()
-	darkness_environment.background_mode = Environment.BG_COLOR
-	darkness_environment.background_color = Color(0.06, 0.01, 0.01)
-	darkness_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	darkness_environment.ambient_light_color = Color(0.17, 0.05, 0.05)
-	darkness_environment.ambient_light_energy = 0.16
-	darkness_environment.fog_enabled = true
-	darkness_environment.fog_light_color = Color(0.65, 0.12, 0.05)
-	darkness_environment.fog_light_energy = 0.35
-	darkness_environment.fog_density = 0.02
+	environnement_obscurite = Environment.new()
+	environnement_obscurite.background_mode = Environment.BG_COLOR
+	environnement_obscurite.background_color = Color(0.06, 0.01, 0.01)
+	environnement_obscurite.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environnement_obscurite.ambient_light_color = Color(0.17, 0.05, 0.05)
+	environnement_obscurite.ambient_light_energy = 0.16
+	environnement_obscurite.fog_enabled = true
+	environnement_obscurite.fog_light_color = Color(0.65, 0.12, 0.05)
+	environnement_obscurite.fog_light_energy = 0.35
+	environnement_obscurite.fog_density = 0.02
 
-	environnement_monde.environment = daylight_environment
+	environnement_monde.environment = environnement_lumiere
 
+# Adapte le rayon de l'arene en fonction du nombre total de joueurs/bots.
 func _ajuster_arene_nombre_joueurs() -> void:
 	var total_joueurs: int = 1 + GameState.nombre_bots_selectionne
-	rayon_arene = START_RADIUS + max(0, total_joueurs - 4) * 1.15
+	rayon_arene_courant = START_RADIUS + max(0, total_joueurs - 4) * 1.15
 
+# Cree plateforme, collisions et plan de lave + lumiere de bord pour l'arene jouable.
 func _construire_arene() -> void:
 	var platform_body: StaticBody3D = StaticBody3D.new()
 	platform_body.name = "PlatformBody"
@@ -477,15 +514,15 @@ func _construire_arene() -> void:
 	mesh_plateforme = MeshInstance3D.new()
 	mesh_plateforme.name = "PlatformMesh"
 	var platform_mesh: BoxMesh = BoxMesh.new()
-	platform_mesh.size = Vector3(rayon_arene * 2.0, 1.0, rayon_arene * 2.0)
+	platform_mesh.size = Vector3(rayon_arene_courant * 2.0, 1.0, rayon_arene_courant * 2.0)
 	mesh_plateforme.mesh = platform_mesh
-	mesh_plateforme.material_override = stone_material
+	mesh_plateforme.material_override = materiau_pierre
 	mesh_plateforme.position = Vector3(0, 0, 0)
 	platform_body.add_child(mesh_plateforme)
 
 	collision_plateforme = CollisionShape3D.new()
 	var platform_shape: BoxShape3D = BoxShape3D.new()
-	platform_shape.size = Vector3(rayon_arene * 2.0, 1.0, rayon_arene * 2.0)
+	platform_shape.size = Vector3(rayon_arene_courant * 2.0, 1.0, rayon_arene_courant * 2.0)
 	collision_plateforme.shape = platform_shape
 	platform_body.add_child(collision_plateforme)
 
@@ -499,7 +536,7 @@ func _construire_arene() -> void:
 	var lava_mesh: BoxMesh = BoxMesh.new()
 	lava_mesh.size = Vector3(80, 1, 80)
 	mesh_lave.mesh = lava_mesh
-	mesh_lave.material_override = lava_material
+	mesh_lave.material_override = materiau_lave
 	lava_body.add_child(mesh_lave)
 
 	var lava_collision: CollisionShape3D = CollisionShape3D.new()
@@ -518,13 +555,14 @@ func _construire_arene() -> void:
 
 	_construire_decor_nether()
 
+# Genere le decor du Nether autour de l'arene (boites texturees, piliers, arcs, cascades de lave).
 func _construire_decor_nether() -> void:
 	var backdrop_root: Node3D = Node3D.new()
 	backdrop_root.name = "NetherBackdrop"
 	racine_arene.add_child(backdrop_root)
 
-	_ajouter_boite_texturee(backdrop_root, Vector3(0.0, NETHER_CEILING_HEIGHT, 0.0), Vector3(140.0, 16.0, 140.0), nether_rock_material)
-	_ajouter_boite_texturee(backdrop_root, Vector3(0.0, NETHER_CEILING_HEIGHT - 7.5, 0.0), Vector3(110.0, 5.0, 110.0), basalt_material)
+	_ajouter_boite_texturee(backdrop_root, Vector3(0.0, NETHER_CEILING_HEIGHT, 0.0), Vector3(140.0, 16.0, 140.0), materiau_roche_nether)
+	_ajouter_boite_texturee(backdrop_root, Vector3(0.0, NETHER_CEILING_HEIGHT - 7.5, 0.0), Vector3(110.0, 5.0, 110.0), materiau_basalte)
 
 	var lava_border_positions: Array[Vector3] = [
 		Vector3(0.0, -12.0, -54.0),
@@ -573,32 +611,32 @@ func _construire_decor_nether() -> void:
 		_ajouter_boite_nether(backdrop_root, ring_positions[i], ring_sizes[i])
 
 	for i: int in range(22):
-		var pillar_height: float = generateur_aleatoire.randf_range(7.0, 22.0)
-		var pillar_size: Vector3 = Vector3(generateur_aleatoire.randf_range(4.0, 10.0), pillar_height, generateur_aleatoire.randf_range(4.0, 10.0))
+		var pillar_height: float = aleatoire_partie.randf_range(7.0, 22.0)
+		var pillar_size: Vector3 = Vector3(aleatoire_partie.randf_range(4.0, 10.0), pillar_height, aleatoire_partie.randf_range(4.0, 10.0))
 		var pillar_pos: Vector3 = Vector3(
-			generateur_aleatoire.randf_range(-52.0, 52.0),
+			aleatoire_partie.randf_range(-52.0, 52.0),
 			-5.0 + pillar_height * 0.5,
-			generateur_aleatoire.randf_range(-52.0, 52.0)
+			aleatoire_partie.randf_range(-52.0, 52.0)
 		)
-		if pillar_pos.distance_to(Vector3.ZERO) < rayon_arene + 11.0:
+		if pillar_pos.distance_to(Vector3.ZERO) < rayon_arene_courant + 11.0:
 			continue
-		var pillar_material: StandardMaterial3D = basalt_material if i % 3 == 0 else nether_rock_material
+		var pillar_material: StandardMaterial3D = materiau_basalte if i % 3 == 0 else materiau_roche_nether
 		_ajouter_boite_texturee(backdrop_root, pillar_pos, pillar_size, pillar_material)
-		if generateur_aleatoire.randf() < 0.55:
-			_ajouter_pique_nether(backdrop_root, pillar_pos + Vector3(0.0, pillar_height * 0.5 + 1.0, 0.0), generateur_aleatoire.randf_range(3.0, 8.0), false)
+		if aleatoire_partie.randf() < 0.55:
+			_ajouter_pique_nether(backdrop_root, pillar_pos + Vector3(0.0, pillar_height * 0.5 + 1.0, 0.0), aleatoire_partie.randf_range(3.0, 8.0), false)
 
 	for i: int in range(12):
-		var shelf_size: Vector3 = Vector3(generateur_aleatoire.randf_range(12.0, 24.0), generateur_aleatoire.randf_range(3.0, 6.0), generateur_aleatoire.randf_range(10.0, 20.0))
+		var shelf_size: Vector3 = Vector3(aleatoire_partie.randf_range(12.0, 24.0), aleatoire_partie.randf_range(3.0, 6.0), aleatoire_partie.randf_range(10.0, 20.0))
 		var shelf_pos: Vector3 = Vector3(
-			generateur_aleatoire.randf_range(-56.0, 56.0),
-			generateur_aleatoire.randf_range(4.0, 16.0),
-			generateur_aleatoire.randf_range(-56.0, 56.0)
+			aleatoire_partie.randf_range(-56.0, 56.0),
+			aleatoire_partie.randf_range(4.0, 16.0),
+			aleatoire_partie.randf_range(-56.0, 56.0)
 		)
-		if shelf_pos.distance_to(Vector3.ZERO) < rayon_arene + 16.0:
+		if shelf_pos.distance_to(Vector3.ZERO) < rayon_arene_courant + 16.0:
 			continue
-		_ajouter_boite_texturee(backdrop_root, shelf_pos, shelf_size, basalt_material)
-		if generateur_aleatoire.randf() < 0.6:
-			_ajouter_agregat_glowstone(backdrop_root, shelf_pos + Vector3(generateur_aleatoire.randf_range(-2.0, 2.0), -shelf_size.y * 0.5 - 0.8, generateur_aleatoire.randf_range(-2.0, 2.0)))
+		_ajouter_boite_texturee(backdrop_root, shelf_pos, shelf_size, materiau_basalte)
+		if aleatoire_partie.randf() < 0.6:
+			_ajouter_agregat_glowstone(backdrop_root, shelf_pos + Vector3(aleatoire_partie.randf_range(-2.0, 2.0), -shelf_size.y * 0.5 - 0.8, aleatoire_partie.randf_range(-2.0, 2.0)))
 
 	var arch_centers: Array[Vector3] = [
 		Vector3(-38.0, 7.0, -30.0),
@@ -607,26 +645,26 @@ func _construire_decor_nether() -> void:
 		Vector3(39.0, 7.0, 30.0)
 	]
 	for arch_center: Vector3 in arch_centers:
-		_ajouter_arc_nether(backdrop_root, arch_center, generateur_aleatoire.randf_range(16.0, 24.0), generateur_aleatoire.randf_range(12.0, 17.0), generateur_aleatoire.randf_range(5.0, 8.0))
+		_ajouter_arc_nether(backdrop_root, arch_center, aleatoire_partie.randf_range(16.0, 24.0), aleatoire_partie.randf_range(12.0, 17.0), aleatoire_partie.randf_range(5.0, 8.0))
 
 	for i: int in range(18):
 		var ceiling_spike_pos: Vector3 = Vector3(
-			generateur_aleatoire.randf_range(-58.0, 58.0),
-			NETHER_CEILING_HEIGHT - generateur_aleatoire.randf_range(2.0, 6.0),
-			generateur_aleatoire.randf_range(-58.0, 58.0)
+			aleatoire_partie.randf_range(-58.0, 58.0),
+			NETHER_CEILING_HEIGHT - aleatoire_partie.randf_range(2.0, 6.0),
+			aleatoire_partie.randf_range(-58.0, 58.0)
 		)
-		if ceiling_spike_pos.distance_to(Vector3.ZERO) < rayon_arene + 12.0:
+		if ceiling_spike_pos.distance_to(Vector3.ZERO) < rayon_arene_courant + 12.0:
 			continue
-		_ajouter_pique_nether(backdrop_root, ceiling_spike_pos, generateur_aleatoire.randf_range(4.0, 10.0), true)
+		_ajouter_pique_nether(backdrop_root, ceiling_spike_pos, aleatoire_partie.randf_range(4.0, 10.0), true)
 
 	for i: int in range(10):
-		var lavafall_height: float = generateur_aleatoire.randf_range(18.0, 34.0)
+		var lavafall_height: float = aleatoire_partie.randf_range(18.0, 34.0)
 		var lavafall_pos: Vector3 = Vector3(
-			generateur_aleatoire.randf_range(-52.0, 52.0),
-			generateur_aleatoire.randf_range(10.0, 18.0),
-			generateur_aleatoire.randf_range(-52.0, 52.0)
+			aleatoire_partie.randf_range(-52.0, 52.0),
+			aleatoire_partie.randf_range(10.0, 18.0),
+			aleatoire_partie.randf_range(-52.0, 52.0)
 		)
-		if lavafall_pos.distance_to(Vector3.ZERO) < rayon_arene + 12.0:
+		if lavafall_pos.distance_to(Vector3.ZERO) < rayon_arene_courant + 12.0:
 			continue
 		_ajouter_cascade_lave(backdrop_root, lavafall_pos, lavafall_height)
 
@@ -654,13 +692,13 @@ func _ajouter_boite_texturee(target_root: Node3D, position: Vector3, size: Vecto
 	return mesh_instance
 
 func _ajouter_boite_nether(target_root: Node3D, position: Vector3, size: Vector3) -> void:
-	_ajouter_boite_texturee(target_root, position, size, nether_rock_material)
+	_ajouter_boite_texturee(target_root, position, size, materiau_roche_nether)
 
 func _ajouter_arc_nether(target_root: Node3D, center: Vector3, span: float, height: float, thickness: float) -> void:
-	_ajouter_boite_texturee(target_root, center + Vector3(-span * 0.5, -2.0, 0.0), Vector3(thickness, height, thickness + 1.5), basalt_material)
-	_ajouter_boite_texturee(target_root, center + Vector3(span * 0.5, -2.0, 0.0), Vector3(thickness, height, thickness + 1.5), basalt_material)
-	_ajouter_boite_texturee(target_root, center + Vector3(0.0, height * 0.35, 0.0), Vector3(span + thickness, thickness, thickness + 2.0), nether_rock_material)
-	_ajouter_boite_texturee(target_root, center + Vector3(0.0, height * 0.12, 0.0), Vector3(span * 0.72, thickness * 0.8, thickness + 0.8), basalt_material)
+	_ajouter_boite_texturee(target_root, center + Vector3(-span * 0.5, -2.0, 0.0), Vector3(thickness, height, thickness + 1.5), materiau_basalte)
+	_ajouter_boite_texturee(target_root, center + Vector3(span * 0.5, -2.0, 0.0), Vector3(thickness, height, thickness + 1.5), materiau_basalte)
+	_ajouter_boite_texturee(target_root, center + Vector3(0.0, height * 0.35, 0.0), Vector3(span + thickness, thickness, thickness + 2.0), materiau_roche_nether)
+	_ajouter_boite_texturee(target_root, center + Vector3(0.0, height * 0.12, 0.0), Vector3(span * 0.72, thickness * 0.8, thickness + 0.8), materiau_basalte)
 
 func _ajouter_pique_nether(target_root: Node3D, origin: Vector3, height: float, hanging: bool) -> void:
 	var segments: int = max(2, int(round(height / 2.0)))
@@ -672,7 +710,7 @@ func _ajouter_pique_nether(target_root: Node3D, origin: Vector3, height: float, 
 			target_root,
 			origin + Vector3(0.0, y_offset, 0.0),
 			Vector3(segment_scale, 1.8, segment_scale),
-			basalt_material if i % 2 == 0 else nether_rock_material
+			materiau_basalte if i % 2 == 0 else materiau_roche_nether
 		)
 
 func _ajouter_cascade_lave(target_root: Node3D, top_position: Vector3, height: float) -> void:
@@ -681,7 +719,7 @@ func _ajouter_cascade_lave(target_root: Node3D, top_position: Vector3, height: f
 	mesh.size = Vector3(1.6, height, 1.6)
 	lavafall.mesh = mesh
 	lavafall.position = top_position + Vector3(0.0, -height * 0.5, 0.0)
-	lavafall.material_override = lava_material
+	lavafall.material_override = materiau_lave
 	target_root.add_child(lavafall)
 
 	var splash: MeshInstance3D = MeshInstance3D.new()
@@ -691,11 +729,11 @@ func _ajouter_cascade_lave(target_root: Node3D, top_position: Vector3, height: f
 	splash_mesh.height = 0.8
 	splash.mesh = splash_mesh
 	splash.position = Vector3(top_position.x, -9.5, top_position.z)
-	splash.material_override = lava_material
+	splash.material_override = materiau_lave
 	target_root.add_child(splash)
 
-	if generateur_aleatoire.randf() < 0.7:
-		_ajouter_boite_texturee(target_root, Vector3(top_position.x, top_position.y + 0.8, top_position.z), Vector3(3.2, 1.2, 3.2), nether_rock_material)
+	if aleatoire_partie.randf() < 0.7:
+		_ajouter_boite_texturee(target_root, Vector3(top_position.x, top_position.y + 0.8, top_position.z), Vector3(3.2, 1.2, 3.2), materiau_roche_nether)
 
 func _ajouter_agregat_glowstone(target_root: Node3D, center: Vector3) -> void:
 	var offsets: Array[Vector3] = [
@@ -711,9 +749,10 @@ func _ajouter_agregat_glowstone(target_root: Node3D, center: Vector3) -> void:
 		mesh.size = Vector3(1.8, 1.8, 1.8)
 		glow.mesh = mesh
 		glow.position = center + offset
-		glow.material_override = glowstone_material
+		glow.material_override = materiau_pierre_luisante
 		target_root.add_child(glow)
 
+# Instancie les joueurs (humain + bots), choisit leurs skins et place aux positions de spawn.
 func _apparaitre_joueurs() -> void:
 	var total_joueurs: int = 1 + GameState.nombre_bots_selectionne
 	var character_pool: Array[Dictionary] = []
@@ -747,50 +786,59 @@ func _apparaitre_joueurs() -> void:
 		if i == 0:
 			player.definir_controle_humain(true)
 			player.definir_visible_dans_obscurite(true)
-			joueur_humain = player
+			joueur_humain_principal = player
 		else:
 			player.definir_visible_dans_obscurite(false)
-		joueurs.append(player)
+		joueurs_partie.append(player)
 
+# Calcule les positions de spawn sur un cercle autour du centre de l'arene.
 func _generer_positions_spawn(total_joueurs: int) -> Array[Vector3]:
 	var positions: Array[Vector3] = []
-	var spawn_radius: float = max(3.5, rayon_arene - 2.2)
+	var spawn_radius: float = max(3.5, rayon_arene_courant - 2.2)
 	for i: int in range(total_joueurs):
 		var angle: float = (TAU * float(i) / float(total_joueurs)) - PI * 0.5
 		positions.append(centre_arene + Vector3(cos(angle) * spawn_radius, 1.05, sin(angle) * spawn_radius))
 	return positions
 
+# Lance la phase sombre: duree decroissante, rend scene sombre et prepare deplacements bots/humain.
 func _demarrer_phase_obscure() -> void:
-	# Phase déplacement : joueurs bougent, lasers cachés, durée décroissante.
-	phase = Phase.DARK
-	var decay_factor: float = pow(SHRINK_FACTOR, max(0, numero_manche - 1))
+	# phase_jeu déplacement : joueurs_partie bougent, lasers cachés, durée décroissante.
+	phase_jeu = PhaseJeu.DARK
+	var decay_factor: float = pow(SHRINK_FACTOR, max(0, numero_manche_courant - 1))
 	temps_phase_restant = max(5.0, DARK_DURATION * decay_factor)
-	environnement_monde.environment = darkness_environment
+	environnement_monde.environment = environnement_obscurite
 	lumiere_soleil.light_energy = 0.08
-	_afficher_transition_manche("Manche %d" % numero_manche, _construire_texte_liste_vivants())
+	# On ne montre plus d'overlay gris au démarrage de la partie (manche 1) pour éviter l'écran gris au lancement.
+	# Les manches suivantes conservent la transition afin de laisser le temps de lire les infos.
+	if numero_manche_courant > 1:
+		_afficher_transition_manche("Manche %d" % numero_manche_courant, _construire_texte_liste_vivants())
+	else:
+		transition_en_cours = false
+		overlay_transition_manche.visible = false
 	_rafraichir_ui_ordre_tir()
-	for player: PlayerCharacter in joueurs:
+	for player: PlayerCharacter in joueurs_partie:
 		if player.est_vivant:
-			player.planifier_phase_obscure(centre_arene, rayon_arene, generateur_aleatoire)
+			player.planifier_phase_obscure(centre_arene, rayon_arene_courant, aleatoire_partie)
 			player.definir_visibilite_phase(true)
 
+# Avance le timer de phase sombre, gere controles humain/bots puis bascule en phase lumiere si ecoule.
 func _mettre_a_jour_phase_obscure(delta: float) -> void:
 	temps_phase_restant -= delta
-	if joueur_humain != null and joueur_humain.est_vivant:
+	if joueur_humain_principal != null and joueur_humain_principal.est_vivant:
 		if Input.is_action_just_pressed("toggle_prone"):
-			joueur_humain.basculer_allonge()
+			joueur_humain_principal.basculer_allonge()
 		var controller_aim: Vector2 = _obtenir_entree_visee_manette()
 		if controller_aim.length() >= GAMEPAD_DEADZONE:
-			camera_manette_active = true
+			controle_camera_manette_actif = true
 			lacet_camera_manette -= controller_aim.x * CAMERA_CONTROLLER_YAW_SPEED * delta
 			tangage_camera_manette = clamp(tangage_camera_manette + controller_aim.y * CAMERA_CONTROLLER_PITCH_SPEED * delta, CAMERA_CONTROLLER_PITCH_MIN, CAMERA_CONTROLLER_PITCH_MAX)
 			_mettre_a_jour_visee_manette_depuis_camera()
-		elif not camera_manette_active:
+		elif not controle_camera_manette_actif:
 			_mettre_a_jour_visee_souris_depuis_camera()
 		var input_vector: Vector2 = _obtenir_vecteur_deplacement()
-		joueur_humain.deplacer_humain(input_vector, camera.global_basis, centre_arene, rayon_arene)
-	for player: PlayerCharacter in joueurs:
-		player.deplacer_en_obscurite(delta, centre_arene, rayon_arene)
+		joueur_humain_principal.deplacer_humain(input_vector, camera.global_basis, centre_arene, rayon_arene_courant)
+	for player: PlayerCharacter in joueurs_partie:
+		player.deplacer_en_obscurite(delta, centre_arene, rayon_arene_courant)
 	if temps_phase_restant <= 0.0:
 		_demarrer_phase_lumineuse()
 
@@ -807,101 +855,106 @@ func _obtenir_rayon_erreur_visee_bot() -> float:
 func _obtenir_point_visee_bot(target: PlayerCharacter) -> Vector3:
 	var error_radius: float = _obtenir_rayon_erreur_visee_bot()
 	var offset: Vector3 = Vector3(
-		generateur_aleatoire.randf_range(-error_radius, error_radius),
-		0.0,
-		generateur_aleatoire.randf_range(-error_radius, error_radius)
+		aleatoire_partie.randf_range(-error_radius, error_radius),
+		target.obtenir_hauteur_focus_camera(),
+		aleatoire_partie.randf_range(-error_radius, error_radius)
 	)
 	return target.global_position + offset
 
+# Configure la phase tir: verrouille directions, ordonne la file, eclaire la scene et stoppe les mouvements.
 func _demarrer_phase_lumineuse() -> void:
 	# Phase tir : verrouille les directions de tir, affiche ordre et lance transition.
-	phase = Phase.LIGHT
-	delai_tir_restant = 0.3
-	phase_lumineuse_revelee = false
-	temps_observation_lumiere = 0.0
-	environnement_monde.environment = daylight_environment
+	phase_jeu = PhaseJeu.LIGHT
+	delai_avant_tir = 0.3
+	phase_lumiere_revelee = false
+	temps_observation_phase_lumiere = 0.0
+	environnement_monde.environment = environnement_lumiere
 	lumiere_soleil.light_energy = 1.8
-	for player: PlayerCharacter in joueurs:
+	for player: PlayerCharacter in joueurs_partie:
 		if player != null:
 			player.arreter_mouvement()
 
-	file_tirs.clear()
-	for player: PlayerCharacter in joueurs:
+	file_tirs_ordonnee.clear()
+	for player: PlayerCharacter in joueurs_partie:
 		if not player.est_vivant:
 			continue
 		if not player.est_humain:
-			var target: Variant = player.choisir_cible(joueurs, generateur_aleatoire)
+			var target: Variant = player.choisir_cible(joueurs_partie, aleatoire_partie)
 			if target != null:
 				player.viser_point(_obtenir_point_visee_bot(target as PlayerCharacter))
-		file_tirs.append(player)
-	file_tirs.shuffle()
+		file_tirs_ordonnee.append(player)
+	file_tirs_ordonnee.shuffle()
 	_afficher_transition_manche("Phase de tir", _construire_texte_liste_vivants())
 	var reveal_timer: SceneTreeTimer = get_tree().create_timer(ROUND_TRANSITION_FADE_IN + 0.15)
 	reveal_timer.timeout.connect(_reveler_phase_lumineuse)
 
+# Orchestration des tirs sequentiels pendant la lumiere (revele ordre, applique delais et passage fin manche).
 func _mettre_a_jour_phase_lumineuse(delta: float) -> void:
-	# Gère le tempo des tirs séquentiels pendant la phase lumière.
-	if not phase_lumineuse_revelee:
+	# Gère le tempo des tirs séquentiels pendant la phase_jeu lumière.
+	if not phase_lumiere_revelee:
 		return
-	if temps_observation_lumiere > 0.0:
-		temps_observation_lumiere -= delta
-		if temps_observation_lumiere > 0.0:
+	if temps_observation_phase_lumiere > 0.0:
+		temps_observation_phase_lumiere -= delta
+		if temps_observation_phase_lumiere > 0.0:
 			return
-		delai_tir_restant = min(delai_tir_restant, 0.3)
-	if file_tirs.is_empty():
-		phase = Phase.ROUND_END
+		delai_avant_tir = min(delai_avant_tir, 0.3)
+	if file_tirs_ordonnee.is_empty():
+		phase_jeu = PhaseJeu.ROUND_END
 		temps_phase_restant = 1.2
-		_afficher_transition_manche("Fin manche %d" % numero_manche, _construire_texte_liste_vivants())
+		await get_tree().create_timer(1.0).timeout
+		_afficher_transition_manche("Fin manche %d" % numero_manche_courant, _construire_texte_liste_vivants())
 		return
 
-	delai_tir_restant -= delta
-	if delai_tir_restant > 0.0:
+	delai_avant_tir -= delta
+	if delai_avant_tir > 0.0:
 		return
 
-	var shooter: PlayerCharacter = file_tirs.pop_front() as PlayerCharacter
+	var shooter: PlayerCharacter = file_tirs_ordonnee.pop_front() as PlayerCharacter
 	if is_instance_valid(shooter) and shooter.est_vivant:
 		_tirer_projectile_direction(shooter, shooter.obtenir_direction_tir_verrouillee())
-	delai_tir_restant = LIGHT_SHOT_DELAY
+	delai_avant_tir = LIGHT_SHOT_DELAY
 	_rafraichir_ui_ordre_tir()
 
 func _reveler_phase_lumineuse() -> void:
-	if phase != Phase.LIGHT:
+	if phase_jeu != PhaseJeu.LIGHT:
 		return
-	phase_lumineuse_revelee = true
-	temps_observation_lumiere = PRE_LIGHT_OBSERVE_TIME
-	delai_tir_restant = 0.3
-	cible_camera_libre = joueur_humain
-	camera_libre_active = false
-	for player: PlayerCharacter in joueurs:
+	phase_lumiere_revelee = true
+	temps_observation_phase_lumiere = PRE_LIGHT_OBSERVE_TIME
+	delai_avant_tir = 0.3
+	cible_camera_suivie = joueur_humain_principal
+	mode_camera_libre_actif = false
+	for player: PlayerCharacter in joueurs_partie:
 		if not player.est_vivant:
 			continue
 		player.definir_visibilite_phase(false)
 		player.verrouiller_pour_lumiere()
 	var queued_joueurs: Array[PlayerCharacter] = []
-	for player: PlayerCharacter in file_tirs:
+	for player: PlayerCharacter in file_tirs_ordonnee:
 		if is_instance_valid(player) and player.est_vivant:
 			queued_joueurs.append(player)
 	_appliquer_nameplates_ordre_tir(queued_joueurs)
 	_rafraichir_ui_ordre_tir()
 
+# Entre deux manches: timer court, si un seul survivant -> fin, sinon reduit arene et relance phase sombre.
 func _mettre_a_jour_fin_manche(delta: float) -> void:
-	# Petite pause entre manches, rétrécit l'arène puis relance la phase sombre.
+	# Petite pause entre manches, rétrécit l'arène puis relance la phase_jeu sombre.
 	_rafraichir_ui_ordre_tir()
 	temps_phase_restant -= delta
 	if temps_phase_restant > 0.0:
 		return
 
-	var alive_joueurs: Array[PlayerCharacter] = _obtenir_joueurs_vivants()
-	if alive_joueurs.size() <= 1:
+	var joueurs_vivants: Array[PlayerCharacter] = _obtenir_joueurs_vivants()
+	if joueurs_vivants.size() <= 1:
 		_terminer_partie()
 		return
 
-	numero_manche += 1
-	rayon_arene = max(MIN_RADIUS, rayon_arene * SHRINK_FACTOR)
+	numero_manche_courant += 1
+	rayon_arene_courant = max(MIN_RADIUS, rayon_arene_courant * SHRINK_FACTOR)
 	_mettre_a_jour_taille_plateforme()
 	_repositionner_hors_joueurs()
 	_demarrer_phase_obscure()
 
+# Instancie un projectile et le configure avec position de bouche et direction verrouillee.
 func _tirer_projectile_direction(shooter: PlayerCharacter, direction: Vector3) -> void:
 	# Instancie et tire un projectile depuis un joueur donné.
 	var projectile: Projectile = PROJECTILE_SCENE.instantiate() as Projectile
@@ -909,62 +962,68 @@ func _tirer_projectile_direction(shooter: PlayerCharacter, direction: Vector3) -
 	projectile.configurer(shooter.obtenir_position_bouche_canon(), direction, shooter)
 	projectile.joueur_touche.connect(_sur_projectile_touche)
 
+# Callback projectile: si touche un joueur vivant, affiche notif et elimine la cible.
 func _sur_projectile_touche(target: PlayerCharacter, shooter: PlayerCharacter) -> void:
 	# Callback sur touche : élimine la cible et notifie.
 	if target != null and target.est_vivant:
-		if target == joueur_humain and shooter != null and shooter.est_vivant:
-			joueur_spectate = shooter
-			_caler_camera_sur_joueur(joueur_spectate)
+		if target == joueur_humain_principal and shooter != null and shooter.est_vivant:
+			joueur_spectateur_cible = shooter
+			_caler_camera_sur_joueur(joueur_spectateur_cible)
+			_afficher_overlay_mort()
 		var shooter_name: String = shooter.nom_joueur if shooter != null else "?"
 		_afficher_notification("%s touche %s" % [shooter_name, target.nom_joueur])
 		target.eliminer()
 
+# Met a jour ordre d elimination, camera spectateur et declenche fin de partie si necessaire.
 func _sur_joueur_elimine(player: PlayerCharacter) -> void:
 	# Gestion de l'ordre d'élimination, spectateur, fin de partie potentielle.
-	if not ordre_elimination.has(player):
-		ordre_elimination.append(player)
-	file_tirs.erase(player)
+	if not ordre_eliminations.has(player):
+		ordre_eliminations.append(player)
+	file_tirs_ordonnee.erase(player)
 	_afficher_notification("%s est éliminé" % player.nom_joueur)
-	if player == joueur_humain:
-		if joueur_spectate == null or not joueur_spectate.est_vivant:
-			joueur_spectate = _trouver_premier_vivant_sauf(joueur_humain)
-		_afficher_notification("Vous êtes mort")
-	if joueur_spectate == player:
-		joueur_spectate = _trouver_premier_vivant_sauf(joueur_humain)
-	if joueur_humain != null and not joueur_humain.est_vivant and joueur_spectate != null:
-		_caler_camera_sur_joueur(joueur_spectate)
+	if player == joueur_humain_principal:
+		if joueur_spectateur_cible == null or not joueur_spectateur_cible.est_vivant:
+			joueur_spectateur_cible = _trouver_premier_vivant_sauf(joueur_humain_principal)
+		_afficher_notification("Vous \u00EAtes mort")
+		_afficher_overlay_mort()
+	if joueur_spectateur_cible == player:
+		joueur_spectateur_cible = _trouver_premier_vivant_sauf(joueur_humain_principal)
+	if joueur_humain_principal != null and not joueur_humain_principal.est_vivant and joueur_spectateur_cible != null:
+		_caler_camera_sur_joueur(joueur_spectateur_cible)
 	_rafraichir_ui_ordre_tir()
-	if _obtenir_joueurs_vivants().size() <= 1 and phase != Phase.GAME_OVER:
+	if _obtenir_joueurs_vivants().size() <= 1 and phase_jeu != PhaseJeu.GAME_OVER:
 		_terminer_partie()
 
 func _trouver_premier_vivant_sauf(excluded: PlayerCharacter) -> Variant:
-	for player: PlayerCharacter in joueurs:
+	for player: PlayerCharacter in joueurs_partie:
 		if player != excluded and player.est_vivant:
 			return player
 	return null
 
+# Assure qu'un joueur valide est suivi en mode spectateur quand le joueur humain est mort.
 func _assurer_cible_spectateur() -> void:
 	# S'assure qu'un joueur valide est suivi en spectateur.
-	if joueur_humain != null and joueur_humain.est_vivant:
+	if joueur_humain_principal != null and joueur_humain_principal.est_vivant:
 		return
-	if joueur_spectate == null or not joueur_spectate.est_vivant:
-		joueur_spectate = _trouver_premier_vivant_sauf(joueur_humain)
-		if joueur_spectate != null:
-			_caler_camera_sur_joueur(joueur_spectate)
+	if joueur_spectateur_cible == null or not joueur_spectateur_cible.est_vivant:
+		joueur_spectateur_cible = _trouver_premier_vivant_sauf(joueur_humain_principal)
+		if joueur_spectateur_cible != null:
+			_caler_camera_sur_joueur(joueur_spectateur_cible)
 
-func _alterner_joueur_spectate(direction: int) -> void:
+# Fait defiler la cible spectateur parmi les survivants (clic gauche/droit).
+func _alterner_joueur_spectateur_cible(direction: int) -> void:
 	# Parcours des survivants en spectateur (clic gauche/droit).
-	var alive_joueurs: Array[PlayerCharacter] = _obtenir_joueurs_vivants()
-	if joueur_humain != null:
-		alive_joueurs.erase(joueur_humain)
-	if alive_joueurs.is_empty():
+	var joueurs_vivants: Array[PlayerCharacter] = _obtenir_joueurs_vivants()
+	if joueur_humain_principal != null:
+		joueurs_vivants.erase(joueur_humain_principal)
+	if joueurs_vivants.is_empty():
 		return
-	var current_index: int = alive_joueurs.find(joueur_spectate)
+	var current_index: int = joueurs_vivants.find(joueur_spectateur_cible)
 	if current_index == -1:
 		current_index = 0
-	var next_index: int = wrapi(current_index + direction, 0, alive_joueurs.size())
-	joueur_spectate = alive_joueurs[next_index]
-	_caler_camera_sur_joueur(joueur_spectate)
+	var next_index: int = wrapi(current_index + direction, 0, joueurs_vivants.size())
+	joueur_spectateur_cible = joueurs_vivants[next_index]
+	_caler_camera_sur_joueur(joueur_spectateur_cible)
 
 func _caler_camera_sur_joueur(target_player: PlayerCharacter) -> void:
 	if target_player == null:
@@ -980,34 +1039,36 @@ func _caler_camera_sur_joueur(target_player: PlayerCharacter) -> void:
 	if right_direction.length() < 0.01:
 		right_direction = Vector3.RIGHT
 	right_direction = right_direction.normalized()
-	var desired_position: Vector3 = focus_point + Vector3(0, target_player.obtenir_offset_hauteur_camera(), 0) + back_direction * distance_camera + right_direction * CAMERA_SIDE_OFFSET
+	var desired_position: Vector3 = focus_point + Vector3(0, target_player.obtenir_offset_hauteur_camera(), 0) + back_direction * distance_camera_courante + right_direction * CAMERA_SIDE_OFFSET
 	camera.global_position = desired_position
 	camera.look_at(focus_point, Vector3.UP)
-	camera_manette_active = false
-	cible_camera_libre = target_player
+	controle_camera_manette_actif = false
+	cible_camera_suivie = target_player
 
 func _sur_spectateur_quitter_presse() -> void:
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/mode_select.tscn")
 
 func _obtenir_joueur_cible_camera() -> Variant:
-	if joueur_humain != null and joueur_humain.est_vivant:
-		return joueur_humain
-	if joueur_spectate != null and joueur_spectate.est_vivant:
-		return joueur_spectate
+	if joueur_humain_principal != null and joueur_humain_principal.est_vivant:
+		return joueur_humain_principal
+	if joueur_spectateur_cible != null and joueur_spectateur_cible.est_vivant:
+		return joueur_spectateur_cible
 	return _trouver_premier_vivant_sauf(null)
 
+# Ajuste la distance orbitale de la camera selon la molette (borne min/max).
 func _ajuster_zoom_camera(direction: int) -> void:
 	# direction > 0 : zoom avant, direction < 0 : zoom arrière.
-	distance_camera = clamp(distance_camera - float(direction) * CAMERA_ZOOM_PAS, CAMERA_DISTANCE_MIN, CAMERA_DISTANCE_MAX)
+	distance_camera_courante = clamp(distance_camera_courante - float(direction) * CAMERA_ZOOM_PAS, CAMERA_DISTANCE_MIN, CAMERA_DISTANCE_MAX)
 
 func _mettre_a_jour_taille_plateforme() -> void:
 	var platform_mesh: BoxMesh = mesh_plateforme.mesh as BoxMesh
-	platform_mesh.size = Vector3(rayon_arene * 2.0, 1.0, rayon_arene * 2.0)
+	platform_mesh.size = Vector3(rayon_arene_courant * 2.0, 1.0, rayon_arene_courant * 2.0)
 
 	var platform_shape: BoxShape3D = collision_plateforme.shape as BoxShape3D
-	platform_shape.size = Vector3(rayon_arene * 2.0, 1.0, rayon_arene * 2.0)
+	platform_shape.size = Vector3(rayon_arene_courant * 2.0, 1.0, rayon_arene_courant * 2.0)
 
+# Camera orbitale: suit humain ou spectateur, integre souris/manette/gyro et distance de zoom.
 func _mettre_a_jour_camera(delta: float) -> void:
 	# Caméra orbitale : souris par défaut, gyro si la souris sort de l'écran.
 	_assurer_cible_spectateur()
@@ -1016,39 +1077,39 @@ func _mettre_a_jour_camera(delta: float) -> void:
 		return
 	var target_player: PlayerCharacter = camera_target as PlayerCharacter
 	var focus_point: Vector3 = target_player.global_position + Vector3(0, target_player.obtenir_hauteur_focus_camera(), 0)
-	var was_mouse_inside: bool = souris_dans_vue
-	souris_dans_vue = _souris_dans_viewport()
-	if not souris_dans_vue and was_mouse_inside:
+	var was_mouse_inside: bool = souris_dans_viewport
+	souris_dans_viewport = _souris_dans_viewport()
+	if not souris_dans_viewport and was_mouse_inside:
 		gyro_actif = true
-	if souris_dans_vue and not was_mouse_inside:
+	if souris_dans_viewport and not was_mouse_inside:
 		gyro_actif = false
-	if gyro_actif and not souris_dans_vue:
-		camera_souris_lacet += vitesse_lacet_gyro * delta
-		camera_souris_tangage = clamp(camera_souris_tangage + vitesse_tangage_gyro * delta, CAMERA_CONTROLLER_PITCH_MIN, CAMERA_CONTROLLER_PITCH_MAX)
-		camera_libre_lacet = camera_souris_lacet
-		camera_libre_tangage = camera_souris_tangage
-	if not souris_dans_vue:
-		lacet_camera_manette = camera_souris_lacet
-		tangage_camera_manette = camera_souris_tangage
-	if camera_libre_active and target_player == cible_camera_libre:
-		var use_yaw_fc: float = camera_libre_lacet if not souris_dans_vue else camera_souris_lacet
-		var use_pitch_fc: float = camera_libre_tangage if not souris_dans_vue else camera_souris_tangage
+	if gyro_actif and not souris_dans_viewport:
+		lacet_camera_souris += vitesse_lacet_gyro_mode * delta
+		tangage_camera_souris = clamp(tangage_camera_souris + vitesse_tangage_gyro_mode * delta, CAMERA_CONTROLLER_PITCH_MIN, CAMERA_CONTROLLER_PITCH_MAX)
+		lacet_camera_libre = lacet_camera_souris
+		tangage_camera_libre = tangage_camera_souris
+	if not souris_dans_viewport:
+		lacet_camera_manette = lacet_camera_souris
+		tangage_camera_manette = tangage_camera_souris
+	if mode_camera_libre_actif and target_player == cible_camera_suivie:
+		var use_yaw_fc: float = lacet_camera_libre if not souris_dans_viewport else lacet_camera_souris
+		var use_pitch_fc: float = tangage_camera_libre if not souris_dans_viewport else tangage_camera_souris
 		var look_basis_fc: Basis = Basis(Vector3.UP, use_yaw_fc) * Basis(Vector3.RIGHT, use_pitch_fc)
 		var forward_fc: Vector3 = -look_basis_fc.z
 		var right_fc: Vector3 = look_basis_fc.x
 		var vertical_offset_fc: float = target_player.obtenir_offset_hauteur_camera() - target_player.obtenir_hauteur_focus_camera()
-		var desired_position_fc: Vector3 = focus_point - forward_fc * distance_camera + right_fc * CAMERA_SIDE_OFFSET + Vector3.UP * vertical_offset_fc
+		var desired_position_fc: Vector3 = focus_point - forward_fc * distance_camera_courante + right_fc * CAMERA_SIDE_OFFSET + Vector3.UP * vertical_offset_fc
 		camera.global_position = camera.global_position.lerp(desired_position_fc, clamp(delta * CAMERA_SMOOTHNESS, 0.0, 1.0))
 		camera.look_at(focus_point, Vector3.UP)
 		return
-	if target_player == joueur_humain:
-		var use_yaw: float = lacet_camera_manette if (camera_manette_active or not souris_dans_vue) else camera_souris_lacet
-		var use_pitch: float = tangage_camera_manette if (camera_manette_active or not souris_dans_vue) else camera_souris_tangage
+	if target_player == joueur_humain_principal:
+		var use_yaw: float = lacet_camera_manette if (controle_camera_manette_actif or not souris_dans_viewport) else lacet_camera_souris
+		var use_pitch: float = tangage_camera_manette if (controle_camera_manette_actif or not souris_dans_viewport) else tangage_camera_souris
 		var look_basis: Basis = Basis(Vector3.UP, use_yaw) * Basis(Vector3.RIGHT, use_pitch)
 		var forward: Vector3 = -look_basis.z
 		var right: Vector3 = look_basis.x
 		var vertical_offset: float = target_player.obtenir_offset_hauteur_camera() - target_player.obtenir_hauteur_focus_camera()
-		var desired_position: Vector3 = focus_point - forward * distance_camera + right * CAMERA_SIDE_OFFSET + Vector3.UP * vertical_offset
+		var desired_position: Vector3 = focus_point - forward * distance_camera_courante + right * CAMERA_SIDE_OFFSET + Vector3.UP * vertical_offset
 		camera.global_position = camera.global_position.lerp(desired_position, clamp(delta * CAMERA_SMOOTHNESS, 0.0, 1.0))
 		camera.look_at(focus_point, Vector3.UP)
 		return
@@ -1062,13 +1123,14 @@ func _mettre_a_jour_camera(delta: float) -> void:
 	if right_direction.length() < 0.01:
 		right_direction = Vector3.RIGHT
 	right_direction = right_direction.normalized()
-	var desired_position: Vector3 = focus_point + Vector3(0, target_player.obtenir_offset_hauteur_camera(), 0) + back_direction * distance_camera + right_direction * CAMERA_SIDE_OFFSET
+	var desired_position: Vector3 = focus_point + Vector3(0, target_player.obtenir_offset_hauteur_camera(), 0) + back_direction * distance_camera_courante + right_direction * CAMERA_SIDE_OFFSET
 	camera.global_position = camera.global_position.lerp(desired_position, clamp(delta * CAMERA_SMOOTHNESS, 0.0, 1.0))
 	camera.look_at(focus_point, Vector3.UP)
 
+# Ramene les joueurs vivants a l'interieur du rayon apres reduction d'arene.
 func _repositionner_hors_joueurs() -> void:
-	var limit: float = max(1.0, rayon_arene - 0.8)
-	for player: PlayerCharacter in joueurs:
+	var limit: float = max(1.0, rayon_arene_courant - 0.8)
+	for player: PlayerCharacter in joueurs_partie:
 		if not player.est_vivant:
 			continue
 		var local_pos: Vector3 = player.global_position - centre_arene
@@ -1077,15 +1139,16 @@ func _repositionner_hors_joueurs() -> void:
 		player.global_position = centre_arene + local_pos
 		player.global_position.y = 1.05
 
+# Met a jour le panneau d'ordre de tir et les nameplates numerotes pendant la phase lumiere.
 func _rafraichir_ui_ordre_tir() -> void:
 	# Met à jour le panneau d'ordre de tir et les nameplates (#).
-	if phase != Phase.LIGHT or not phase_lumineuse_revelee:
+	if phase_jeu != PhaseJeu.LIGHT or not phase_lumiere_revelee:
 		panneau_ordre.visible = false
 		return
 	for child: Node in liste_ordre.get_children():
 		child.queue_free()
 	var queued_joueurs: Array[PlayerCharacter] = []
-	for player: PlayerCharacter in file_tirs:
+	for player: PlayerCharacter in file_tirs_ordonnee:
 		if is_instance_valid(player) and player.est_vivant:
 			queued_joueurs.append(player)
 	if queued_joueurs.is_empty():
@@ -1109,13 +1172,14 @@ func _rafraichir_ui_ordre_tir() -> void:
 		if index == 1:
 			couleur_joueur = couleur_joueur.lightened(0.35)
 		name_label.add_theme_color_override("font_color", couleur_joueur)
-		if player == joueur_spectate:
+		if player == joueur_spectateur_cible:
 			name_label.text += " (cam)"
 		row.add_child(name_label)
 		liste_ordre.add_child(row)
 		index += 1
 	_appliquer_nameplates_ordre_tir(queued_joueurs)
 
+# Renvoie la liste des noms des survivants pour les overlays.
 func _construire_texte_liste_vivants() -> String:
 	# Texte pour la transition listant les survivants.
 	var names: Array[String] = []
@@ -1123,6 +1187,7 @@ func _construire_texte_liste_vivants() -> String:
 		names.append(player.nom_joueur)
 	return "Joueurs en vie : %s" % ", ".join(names)
 
+# Affiche un message court avec fondu (duree speciale pour mort du joueur).
 func _afficher_notification(text: String) -> void:
 	if text == "":
 		etiquette_notification.visible = false
@@ -1132,7 +1197,7 @@ func _afficher_notification(text: String) -> void:
 	etiquette_notification.modulate.a = 1.0
 	var duree_visibilite: float = 1.6
 	var duree_fondu: float = 0.4
-	if text.to_lower() == "vous êtes mort" or text.to_lower() == "vous êtes morts":
+	if text.to_lower() == "Vous \u00EAtes mort" or text.to_lower() == "Vous \u00EAtes morts":
 		duree_visibilite = 3.2
 		duree_fondu = 0.8
 	var tween := create_tween()
@@ -1140,6 +1205,7 @@ func _afficher_notification(text: String) -> void:
 	tween.tween_property(etiquette_notification, "modulate:a", 0.0, duree_fondu)
 	tween.finished.connect(func(): etiquette_notification.visible = false)
 
+# Applique le texte (#ordre) sur chaque nameplate de la file de tir, cache les autres.
 func _appliquer_nameplates_ordre_tir(queued_joueurs: Array[PlayerCharacter]) -> void:
 	# Affiche pseudo + ordre de tir au-dessus de chaque bot (et des humains adverses éventuels).
 	for i: int in range(queued_joueurs.size()):
@@ -1151,55 +1217,58 @@ func _appliquer_nameplates_ordre_tir(queued_joueurs: Array[PlayerCharacter]) -> 
 	for player: PlayerCharacter in _obtenir_joueurs_vivants():
 		if not queued_joueurs.has(player):
 			player.definir_texte_nameplate(player.nom_joueur)
-			var should_show: bool = (phase == Phase.LIGHT and phase_lumineuse_revelee) or player == joueur_humain
+			var should_show: bool = (phase_jeu == PhaseJeu.LIGHT and phase_lumiere_revelee) or player == joueur_humain_principal
 			player.definir_nameplate_visible(should_show)
 
+# Rafraichit HUD (phase, etiquettes spectateur, compteur survivants, visibility nameplates).
 func _mettre_a_jour_ui() -> void:
-	# Rafraîchit HUD (phase, spectateur, compteur survivants).
+	# Rafraîchit HUD (phase_jeu, spectateur, compteur survivants).
 	var alive_names: Array[String] = []
-	for player: PlayerCharacter in joueurs:
+	for player: PlayerCharacter in joueurs_partie:
 		if player.est_vivant:
 			alive_names.append(player.nom_joueur)
 
-	match phase:
-		Phase.DARK:
+	match phase_jeu:
+		PhaseJeu.DARK:
 			var secondes_restantes: float = max(0.0, temps_phase_restant)
 			etiquette_phase.text = "Déplacement : %.1f s" % secondes_restantes
-		Phase.LIGHT:
+		PhaseJeu.LIGHT:
 			etiquette_phase.text = ""
-		Phase.ROUND_END:
+		PhaseJeu.ROUND_END:
 			etiquette_phase.text = ""
-		Phase.GAME_OVER:
+		PhaseJeu.GAME_OVER:
 			etiquette_phase.text = "Partie terminee"
 
-	var is_spectating: bool = joueur_humain != null and not joueur_humain.est_vivant and phase != Phase.GAME_OVER
+	var is_spectating: bool = joueur_humain_principal != null and not joueur_humain_principal.est_vivant and phase_jeu != PhaseJeu.GAME_OVER
 	etiquette_spectateur.visible = is_spectating
-	if is_spectating and joueur_spectate != null and joueur_spectate.est_vivant:
-		etiquette_spectateur.text = "Spectateur - %s" % joueur_spectate.nom_joueur
+	if is_spectating and joueur_spectateur_cible != null and joueur_spectateur_cible.est_vivant:
+		etiquette_spectateur.text = "Spectateur - %s" % joueur_spectateur_cible.nom_joueur
 	else:
 		etiquette_spectateur.text = "Spectateur"
 	bouton_quitter_spectateur.visible = is_spectating
-	if is_spectating and phase == Phase.DARK:
-		for player: PlayerCharacter in joueurs:
+	if is_spectating and phase_jeu == PhaseJeu.DARK:
+		for player: PlayerCharacter in joueurs_partie:
 			if player.est_vivant:
 				player.definir_visible_dans_obscurite(true)
 				player.definir_visibilite_phase(true)
-		cible_camera_libre = joueur_spectate
-		camera_libre_active = true
-		camera_libre_lacet = camera_souris_lacet
-		camera_libre_tangage = camera_souris_tangage
-	if joueur_humain != null and joueur_humain.est_vivant:
-		joueur_humain.definir_texte_nameplate("%s" % joueur_humain.nom_joueur)
-		joueur_humain.definir_nameplate_visible(true)
-		cible_camera_libre = joueur_humain
-		camera_libre_active = false
+		cible_camera_suivie = joueur_spectateur_cible
+		mode_camera_libre_actif = true
+		lacet_camera_libre = lacet_camera_souris
+		tangage_camera_libre = tangage_camera_souris
+	if joueur_humain_principal != null and joueur_humain_principal.est_vivant:
+		joueur_humain_principal.definir_texte_nameplate("%s" % joueur_humain_principal.nom_joueur)
+		joueur_humain_principal.definir_nameplate_visible(true)
+		cible_camera_suivie = joueur_humain_principal
+		mode_camera_libre_actif = false
 
-	if ecran_fin_ouvert:
+	if ecran_fin_visible:
 		etiquette_info.text = ""
 	else:
 		etiquette_info.text = "Joueurs en vie : %d" % alive_names.size()
 
+# Anime l'overlay de transition de manche (fade in/hold/fade out).
 func _afficher_transition_manche(text: String, alive_text: String = "") -> void:
+	transition_en_cours = true
 	if is_instance_valid(tween_transition_manche):
 		tween_transition_manche.kill()
 	etiquette_transition_manche.text = text
@@ -1216,25 +1285,74 @@ func _cacher_transition_manche() -> void:
 	overlay_transition_manche.visible = false
 	etiquette_survivants_manche.text = ""
 	tween_transition_manche = null
+	transition_en_cours = false
 
-func _terminer_partie() -> void:
-	if ecran_fin_ouvert:
+func _creer_overlay_mort() -> void:
+	var layer: CanvasLayer = $CanvasLayer
+	overlay_mort = ColorRect.new()
+	overlay_mort.name = "DeathOverlay"
+	overlay_mort.color = Color(0, 0, 0, 0.78)
+	overlay_mort.visible = false
+	overlay_mort.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay_mort.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	overlay_mort.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	overlay_mort.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(overlay_mort)
+
+	etiquette_mort = Label.new()
+	etiquette_mort.text = "Vous \u00EAtes mort"
+	etiquette_mort.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	etiquette_mort.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	etiquette_mort.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	etiquette_mort.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	etiquette_mort.set_anchors_preset(Control.PRESET_FULL_RECT)
+	etiquette_mort.set_offsets_preset(Control.PRESET_FULL_RECT)
+	etiquette_mort.add_theme_font_size_override("font_size", 64)
+	overlay_mort.add_child(etiquette_mort)
+
+func _afficher_overlay_mort() -> void:
+	if overlay_mort == null:
 		return
-	phase = Phase.GAME_OVER
+	overlay_mort.visible = true
+	overlay_mort.modulate.a = 0.0
+	if etiquette_mort != null:
+		etiquette_mort.scale = Vector2.ONE
+	overlay_mort_actif = true
+	var tween := create_tween()
+	tween.tween_property(overlay_mort, "modulate:a", 0.85, 0.15)
+	tween.tween_interval(2.0)
+	tween.tween_property(overlay_mort, "modulate:a", 0.0, 0.35)
+	tween.finished.connect(_fin_overlay_mort)
+
+func _fin_overlay_mort() -> void:
+	if overlay_mort != null:
+		overlay_mort.visible = false
+		overlay_mort.modulate.a = 0.0
+	overlay_mort_actif = false
+	_assurer_cible_spectateur()
+	if joueur_spectateur_cible != null:
+		_caler_camera_sur_joueur(joueur_spectateur_cible)
+
+# Declenche fin de partie: arrete les phases, sauvegarde score, desactive pause.
+func _terminer_partie() -> void:
+	if ecran_fin_visible:
+		return
+	phase_jeu = PhaseJeu.GAME_OVER
 	_sauvegarder_resultat_partie()
 	_afficher_ecran_fin()
 
+# Affiche l'overlay de fin, verrouille le jeu et connecte les boutons de fin.
 func _afficher_ecran_fin() -> void:
 	# Affiche l'écran de fin (victoire/défaite) et fige la partie.
-	ecran_fin_ouvert = true
-	if menu_pause_ouvert:
+	ecran_fin_visible = true
+	if menu_pause_visible:
 		_fermer_menu_pause()
 	get_tree().paused = true
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	overlay_fin.visible = true
 	panneau_ordre.visible = false
 	overlay_transition_manche.visible = false
-	var human_alive: bool = joueur_humain != null and joueur_humain.est_vivant
+	var human_alive: bool = joueur_humain_principal != null and joueur_humain_principal.est_vivant
 	etiquette_titre_fin.text = "Victoire" if human_alive else "Défaite"
 	_afficher_notification(etiquette_titre_fin.text)
 	etiquette_classement.text = _construire_texte_classement()
@@ -1247,11 +1365,11 @@ func _calculer_classement_final() -> Array[PlayerCharacter]:
 	for survivor: PlayerCharacter in _obtenir_joueurs_vivants():
 		if not ranking.has(survivor):
 			ranking.append(survivor)
-	for index: int in range(ordre_elimination.size() - 1, -1, -1):
-		var elimine_player: PlayerCharacter = ordre_elimination[index]
+	for index: int in range(ordre_eliminations.size() - 1, -1, -1):
+		var elimine_player: PlayerCharacter = ordre_eliminations[index]
 		if not ranking.has(elimine_player):
 			ranking.append(elimine_player)
-	for player: PlayerCharacter in joueurs:
+	for player: PlayerCharacter in joueurs_partie:
 		if not ranking.has(player):
 			ranking.append(player)
 	return ranking
@@ -1270,27 +1388,30 @@ func _construire_texte_classement() -> String:
 		lines.append("%d. %s" % [i + 1, player.nom_joueur])
 	return "\n".join(lines)
 
+# Persiste le resultat de partie en SQLite (rang, skin, difficulte, bots, mode).
 func _sauvegarder_resultat_partie() -> void:
-	if partie_enregistree:
+	if score_deja_enregistre:
 		return
-	if joueur_humain == null:
+	if joueur_humain_principal == null:
 		return
 	var ranking: Array[PlayerCharacter] = _calculer_classement_final()
-	var player_rank: int = _obtenir_rang_joueur(joueur_humain, ranking)
+	var player_rank: int = _obtenir_rang_joueur(joueur_humain_principal, ranking)
 	if player_rank <= 0:
 		return
+	# On enregistre rank 1 = vainqueur, 2 = second, etc.
+	var rang_en_base: int = player_rank
 	var selected_character: Dictionary = GameState.obtenir_personnage_selectionne()
 	var skin_id: String = selected_character.get("id", "unknown")
 	var difficulty_for_db: String = _mapper_difficulte_bd(GameState.difficulte_bots_selectionnee)
 	enregistrer_score_bdd(
-		joueur_humain.nom_joueur,
-		player_rank,
+		joueur_humain_principal.nom_joueur,
+		rang_en_base,
 		skin_id,
 		difficulty_for_db,
 		GameState.nombre_bots_selectionne,
 		GameState.mode_jeu_selectionne
 	)
-	partie_enregistree = true
+	score_deja_enregistre = true
 
 func _mapper_difficulte_bd(value: String) -> String:
 	var normalized: String = value.to_lower()
@@ -1306,11 +1427,12 @@ func _mapper_difficulte_bd(value: String) -> String:
 
 func _obtenir_joueurs_vivants() -> Array[PlayerCharacter]:
 	var alive: Array[PlayerCharacter] = []
-	for player: PlayerCharacter in joueurs:
+	for player: PlayerCharacter in joueurs_partie:
 		if player.est_vivant:
 			alive.append(player)
 	return alive
 
+# Combine clavier et stick gauche pour un vecteur de deplacement normalise.
 func _obtenir_vecteur_deplacement() -> Vector2:
 	# Combine clavier/manette pour le déplacement du joueur humain.
 	var keyboard_input: Vector2 = Vector2(
@@ -1326,6 +1448,7 @@ func _obtenir_vecteur_deplacement() -> Vector2:
 	var combined: Vector2 = keyboard_input if keyboard_input.length() >= gamepad_input.length() else gamepad_input
 	return combined.limit_length(1.0)
 
+# Lit le stick droit (avec deadzone) pour la vis�e manette normalis�e.
 func _obtenir_entree_visee_manette() -> Vector2:
 	var aim_input: Vector2 = Vector2(
 		Input.get_joy_axis(0, JOY_AXIS_RIGHT_X),
@@ -1337,40 +1460,42 @@ func _obtenir_entree_visee_manette() -> Vector2:
 
 func _synchroniser_camera_manette_joueur() -> void:
 	# Aligne la caméra de contrôle (manette/souris) sur l'orientation du joueur.
-	if joueur_humain == null:
+	if joueur_humain_principal == null:
 		return
-	var facing: Vector3 = -joueur_humain.global_basis.z
+	var facing: Vector3 = -joueur_humain_principal.global_basis.z
 	facing.y = 0.0
 	if facing.length() < 0.01:
 		facing = Vector3.FORWARD
 	facing = facing.normalized()
 	lacet_camera_manette = atan2(-facing.x, -facing.z)
 	tangage_camera_manette = 0.25
-	camera_souris_lacet = lacet_camera_manette
-	camera_souris_tangage = tangage_camera_manette
-	distance_camera = CAMERA_DISTANCE_DEFAUT
+	lacet_camera_souris = lacet_camera_manette
+	tangage_camera_souris = tangage_camera_manette
+	distance_camera_courante = CAMERA_DISTANCE_DEFAUT
 
+# Convertit l'orientation camera manette en point de visee pour le joueur humain.
 func _mettre_a_jour_visee_manette_depuis_camera() -> void:
 	# Convertit la caméra manette en vecteur d'aim pour le joueur.
-	if joueur_humain == null or not joueur_humain.est_vivant:
+	if joueur_humain_principal == null or not joueur_humain_principal.est_vivant:
 		return
 	var look_basis: Basis = Basis(Vector3.UP, lacet_camera_manette) * Basis(Vector3.RIGHT, tangage_camera_manette)
 	var forward: Vector3 = -look_basis.z
 	forward.y = 0.0
 	if forward.length() < 0.01:
 		return
-	joueur_humain.viser_point(joueur_humain.global_position + forward.normalized() * 20.0)
+	joueur_humain_principal.viser_point(joueur_humain_principal.global_position + forward.normalized() * 20.0)
 
+# Convertit l'orientation camera souris en point de visee pour le joueur humain.
 func _mettre_a_jour_visee_souris_depuis_camera() -> void:
 	# Convertit la caméra souris en vecteur d'aim pour le joueur.
-	if joueur_humain == null or not joueur_humain.est_vivant:
+	if joueur_humain_principal == null or not joueur_humain_principal.est_vivant:
 		return
-	var look_basis: Basis = Basis(Vector3.UP, camera_souris_lacet) * Basis(Vector3.RIGHT, camera_souris_tangage)
+	var look_basis: Basis = Basis(Vector3.UP, lacet_camera_souris) * Basis(Vector3.RIGHT, tangage_camera_souris)
 	var forward: Vector3 = -look_basis.z
 	forward.y = 0.0
 	if forward.length() < 0.01:
 		return
-	joueur_humain.viser_point(joueur_humain.global_position + forward.normalized() * 20.0)
+	joueur_humain_principal.viser_point(joueur_humain_principal.global_position + forward.normalized() * 20.0)
 
 func _assurer_bindings_manette() -> void:
 	_assurer_action_bouton_manette("toggle_prone", JOY_BUTTON_B)
@@ -1382,6 +1507,7 @@ func _assurer_bindings_manette() -> void:
 	_assurer_action_bouton_manette("ui_left", JOY_BUTTON_DPAD_LEFT)
 	_assurer_action_bouton_manette("ui_right", JOY_BUTTON_DPAD_RIGHT)
 
+# Garantit un binding manette par action si manquant.
 func _assurer_action_bouton_manette(action_id: String, button_index: JoyButton) -> void:
 	if not InputMap.has_action(action_id):
 		InputMap.add_action(action_id)
@@ -1510,11 +1636,13 @@ func _creer_texture_reference_lave() -> ImageTexture:
 			image.set_pixel(x, y, pixel)
 	return ImageTexture.create_from_image(image)
 
+# Indique si la souris est toujours dans le viewport courant (utile pour activer le gyro fallback).
 func _souris_dans_viewport() -> bool:
 	var pos: Vector2 = get_viewport().get_mouse_position()
 	var size: Vector2 = get_viewport().get_visible_rect().size
 	return pos.x >= 0.0 and pos.y >= 0.0 and pos.x <= size.x and pos.y <= size.y
 
+# Ouvre/cree la base SQLite et s'assure de la presence de la table Resultats.
 func rafraichir_schema_bdd() -> void:
 	var db: SQLite = SQLite.new()
 	db.path = _obtenir_chemin_bdd()
@@ -1524,6 +1652,7 @@ func rafraichir_schema_bdd() -> void:
 	_assurer_table_resultats(db)
 	db.close_db()
 
+# Insere une ligne de score dans SQLite (nom, rang, skin, difficulte, bots, mode).
 func enregistrer_score_bdd(name, position, skin, difficulty_selected, number_of_bots, mode: String = "solo") -> void:
 	var db: SQLite = SQLite.new()
 	db.path = _obtenir_chemin_bdd()
@@ -1542,9 +1671,11 @@ func enregistrer_score_bdd(name, position, skin, difficulty_selected, number_of_
 	db.insert_row("Resultats", row)
 	db.close_db()
 
+# Convertit le chemin relatif de la BDD en chemin global (ProjectSettings).
 func _obtenir_chemin_bdd() -> String:
 	return ProjectSettings.globalize_path(DATABASE_PATH)
 
+# Cree la table Resultats si elle n'existe pas (schema colonnes/contrainte).
 func _assurer_table_resultats(db: SQLite) -> void:
 	db.query("""
 		CREATE TABLE IF NOT EXISTS Resultats (

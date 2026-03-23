@@ -1,5 +1,10 @@
 extends Control
 
+# �?cran de consultation des scores persistés en SQLite :
+# - ouvre la base (chemin relatif au projet), crée la table si besoin
+# - charge les lignes et remplit un tableau scrollable
+# - gère l'état vide/erreur et permet de revenir au menu principal.
+
 const DATABASE_PATH := "res://../Database_sqlite/database.db"
 
 @onready var etiquette_titre: Label = $CenterContainer/Panel/MarginContainer/VBoxContainer/TitleLabel
@@ -15,6 +20,7 @@ const DATABASE_PATH := "res://../Database_sqlite/database.db"
 @onready var bouton_quitter: Button = $CenterContainer/Panel/MarginContainer/VBoxContainer/QuitButton
 
 func _ready() -> void:
+	# Met à jour les textes, connecte le bouton retour, joue la musique et charge les scores.
 	_appliquer_traductions()
 	bouton_quitter.pressed.connect(_sur_quitter_presse)
 	MenuAudio.connecter_boutons(self)
@@ -23,6 +29,7 @@ func _ready() -> void:
 	bouton_quitter.call_deferred("grab_focus")
 
 func _appliquer_traductions() -> void:
+	# Applique les libellés localisés des en-têtes et du bouton retour.
 	etiquette_titre.text = GameState.cle_traduction("scores_title")
 	etiquette_sous_titre.text = GameState.cle_traduction("scores_subtitle")
 	entete_nom.text = GameState.cle_traduction("scores_header_name")
@@ -35,9 +42,11 @@ func _appliquer_traductions() -> void:
 	bouton_quitter.text = GameState.cle_traduction("scores_back")
 
 func _sur_quitter_presse() -> void:
+	# Retour menu principal.
 	get_tree().change_scene_to_file("res://scenes/menu_main.tscn")
 
 func _charger_scores() -> void:
+	# Ouvre la base, vérifie la table, lit les lignes et construit la liste ou affiche un message vide.
 	_vider_scores()
 	var db: SQLite = SQLite.new()
 	db.path = ProjectSettings.globalize_path(DATABASE_PATH)
@@ -59,15 +68,18 @@ func _charger_scores() -> void:
 		liste_scores.add_child(_construire_ligne(row))
 
 func _vider_scores() -> void:
+	# Supprime le contenu actuel du tableau et cache le label vide.
 	for child: Node in liste_scores.get_children():
 		child.queue_free()
 	etiquette_vide.visible = false
 
 func _afficher_vide(message: String) -> void:
+	# Affiche un message d'état (erreur ou aucun score).
 	etiquette_vide.text = message
 	etiquette_vide.visible = true
 
 func _construire_ligne(row: Dictionary) -> HBoxContainer:
+	# Construit une ligne de scores avec cellules formatées.
 	var container := HBoxContainer.new()
 	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	container.add_theme_constant_override("separation", 12)
@@ -80,6 +92,7 @@ func _construire_ligne(row: Dictionary) -> HBoxContainer:
 	return container
 
 func _creer_cellule(text: String, min_width: float, alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_CENTER) -> Label:
+	# Crée une cellule de tableau avec largeur et alignement configurables.
 	var label := Label.new()
 	label.text = text
 	label.custom_minimum_size = Vector2(min_width, 32)
@@ -89,6 +102,7 @@ func _creer_cellule(text: String, min_width: float, alignment: HorizontalAlignme
 	return label
 
 func _formater_position(value) -> String:
+	# Formate la position en entier ou chaîne brute.
 	if typeof(value) == TYPE_INT:
 		return str(value)
 	if typeof(value) == TYPE_FLOAT:
@@ -96,6 +110,7 @@ func _formater_position(value) -> String:
 	return str(value)
 
 func _formater_mode(value) -> String:
+	# Traduction conviviale du mode sauvegardé.
 	var normalized: String = str(value).to_lower()
 	match normalized:
 		"solo":
@@ -108,6 +123,7 @@ func _formater_mode(value) -> String:
 			return str(value)
 
 func _formater_difficulte(value) -> String:
+	# Traduction conviviale de la difficulté.
 	var normalized: String = str(value).to_lower()
 	match normalized:
 		"easy":
@@ -120,11 +136,13 @@ func _formater_difficulte(value) -> String:
 			return str(value)
 
 func _formater_bots(value) -> String:
+	# Formate le nombre de bots (entier) ou renvoie la valeur brute.
 	if typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT:
 		return str(int(value))
 	return str(value)
 
 func _verifier_table_resultats(db: SQLite) -> void:
+	# Crée la table si besoin (mêmes colonnes que côté jeu).
 	db.query("""
 		CREATE TABLE IF NOT EXISTS Resultats (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,

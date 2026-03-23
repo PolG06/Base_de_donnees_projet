@@ -1,7 +1,11 @@
 extends CharacterBody3D
 class_name PlayerCharacter
 
-# Script d'un joueur (humain ou bot) : déplacements, tir, affichage.
+# Script d'un joueur (humain ou bot) :
+# - reçoit les commandes (humain) ou se déplace aléatoirement (bot) pendant la phase sombre
+# - verrouille une direction de tir et affiche un laser pendant la phase lumière
+# - gère posture debout/allongé, collisions, couleurs du skin et nameplate
+# - émet le signal `elimine` quand il meurt pour informer le contrôleur de partie.
 
 signal elimine(player: PlayerCharacter)
 
@@ -42,7 +46,7 @@ var temps_animation: float = 0.0
 var formes_collision: Dictionary = {}
 
 func _ready() -> void:
-	# Prépare collisions, visuels et vise vers l'avant par défaut.
+	# Prépare collisions/visuels, initialise le laser et oriente la visée par défaut vers l'avant.
 	add_to_group("players")
 	_assurer_formes_collision()
 	reconstruire_visuels()
@@ -61,10 +65,12 @@ func _physics_process(delta: float) -> void:
 	mettre_a_jour_laser()
 
 func definir_controle_humain(value: bool) -> void:
+	# Bascule ce personnage en contrôle joueur (sinon IA).
 	est_humain = value
 	definir_nameplate_visible(false)
 
 func basculer_allonge() -> void:
+	# Inverse posture debout/allongé.
 	definir_allonge(not est_allonge)
 
 func definir_allonge(value: bool) -> void:
@@ -76,6 +82,7 @@ func definir_allonge(value: bool) -> void:
 	mettre_a_jour_laser()
 	_maj_hauteur_nameplate()
 
+# Ajuste les hitboxes selon la posture.
 func _maj_forme_collision() -> void:
 	_assurer_formes_collision()
 	if est_allonge:
@@ -97,6 +104,7 @@ func _maj_forme_collision() -> void:
 		_definir_collision_boite("foot_left", Vector3(0.36, 0.22, 0.36), Vector3(-0.2, 0.08, 0.0))
 		_definir_collision_boite("foot_right", Vector3(0.36, 0.22, 0.36), Vector3(0.2, 0.08, 0.0))
 
+# Initialise le dictionnaire de CollisionShape3D si vide.
 func _assurer_formes_collision() -> void:
 	if formes_collision.is_empty():
 		formes_collision["torso"] = forme_collision
@@ -108,6 +116,7 @@ func _assurer_formes_collision() -> void:
 		formes_collision["foot_left"] = _obtenir_ou_creer_forme_collision("CollisionShapeFootLeft")
 		formes_collision["foot_right"] = _obtenir_ou_creer_forme_collision("CollisionShapeFootRight")
 
+# R�cup�re ou cr�e une forme de collision nomm�e sous BodyRoot.
 func _obtenir_ou_creer_forme_collision(node_name: String) -> CollisionShape3D:
 	var existing: CollisionShape3D = get_node_or_null(node_name) as CollisionShape3D
 	if existing != null:
@@ -117,6 +126,7 @@ func _obtenir_ou_creer_forme_collision(node_name: String) -> CollisionShape3D:
 	add_child(shape_node)
 	return shape_node
 
+# Param�tre taille/position d'une box collider nomm�e.
 func _definir_collision_boite(shape_name: String, size: Vector3, position: Vector3) -> void:
 	var shape_node: CollisionShape3D = formes_collision.get(shape_name, null)
 	if shape_node == null:
@@ -137,6 +147,7 @@ func obtenir_offset_hauteur_camera() -> float:
 	# Décalage vertical de la caméra (encore un peu plus surélevée).
 	return 3.2 if est_allonge else 4.35
 
+# Force la visibilit� en phase sombre (utilis� en spectateur).
 func definir_visible_dans_obscurite(value: bool) -> void:
 	reveler_dans_obscurite = value
 	if est_vivant:
@@ -144,6 +155,7 @@ func definir_visible_dans_obscurite(value: bool) -> void:
 		_definir_laser_visible(value)
 		definir_nameplate_visible(false)
 
+# Affiche/caches corps/laser/nameplate selon phase sombre/lumi�re.
 func definir_visibilite_phase(is_dark_phase: bool) -> void:
 	# Affiche ou cache corps/laser/nameplate selon la phase.
 	if not est_vivant:
@@ -160,22 +172,26 @@ func definir_visibilite_phase(is_dark_phase: bool) -> void:
 		definir_nameplate_visible(not is_dark_phase or est_humain)
 	mettre_a_jour_laser()
 
+# Affiche ou cache le label 3D (nameplate).
 func definir_nameplate_visible(value: bool) -> void:
 	var nameplate: Label3D = _obtenir_ou_creer_nameplate()
 	if nameplate != null:
 		nameplate.visible = value and est_vivant
 
+# Met � jour le texte du nameplate.
 func definir_texte_nameplate(value: String) -> void:
 	var nameplate: Label3D = _obtenir_ou_creer_nameplate()
 	if nameplate != null:
 		nameplate.text = value
 		nameplate.visible = est_vivant and not est_humain
 
+# Ajuste la hauteur du nameplate selon posture.
 func _maj_hauteur_nameplate() -> void:
 	var nameplate: Label3D = _obtenir_ou_creer_nameplate()
 	if nameplate != null:
 		nameplate.position.y = 2.7 if not est_allonge else 1.25
 
+# Reconstruit le mesh voxelis� du personnage et ajoute laser/nameplate.
 func reconstruire_visuels() -> void:
 	var actual_racine_corps: Node3D = racine_corps if racine_corps != null else get_node_or_null("BodyRoot") as Node3D
 	var actual_bouche_canon: Marker3D = bouche_canon if bouche_canon != null else get_node_or_null("BodyRoot/bouche_canon") as Marker3D
@@ -225,6 +241,7 @@ func reconstruire_visuels() -> void:
 	_appliquer_pose_idle()
 	_maj_hauteur_nameplate()
 
+# Ajoute un cube textur� au squelette du personnage.
 func _ajouter_boite(target_root: Node3D, node_name: String, pos: Vector3, size: Vector3, material: Material) -> MeshInstance3D:
 	var mesh_instance: MeshInstance3D = MeshInstance3D.new()
 	mesh_instance.name = node_name
@@ -236,6 +253,7 @@ func _ajouter_boite(target_root: Node3D, node_name: String, pos: Vector3, size: 
 	target_root.add_child(mesh_instance)
 	return mesh_instance
 
+# Ajoute cheveux/face sur la t�te (d�bou/ allong�).
 func _ajouter_details_tete(head: MeshInstance3D, face_material: Material, hair_material: Material, prone_pose: bool) -> void:
 	if head == null:
 		return
@@ -258,6 +276,7 @@ func _ajouter_details_tete(head: MeshInstance3D, face_material: Material, hair_m
 	face.position = Vector3(0.0, 0.0, -(0.315 if not prone_pose else 0.265))
 	head.add_child(face)
 
+# Cr�e le noeud laser (root + mesh) et l'accroche � la bouche de canon.
 func _ajouter_laser(target_root: Node3D, actual_bouche_canon: Marker3D) -> void:
 	var laser_root: Node3D = Node3D.new()
 	laser_root.name = "LaserRoot"
@@ -283,6 +302,7 @@ func _ajouter_laser(target_root: Node3D, actual_bouche_canon: Marker3D) -> void:
 	laser_mesh_instance.material_override = laser_material
 	laser_root.add_child(laser_mesh_instance)
 
+# Cr�e le label 3D au-dessus du personnage.
 func _ajouter_nameplate(target_root: Node3D) -> void:
 	var nameplate: Label3D = Label3D.new()
 	nameplate.name = "Nameplate"
@@ -306,6 +326,7 @@ func _obtenir_ou_creer_nameplate() -> Label3D:
 		nameplate = get_node_or_null("BodyRoot/Nameplate") as Label3D
 	return nameplate
 
+# Pour les bots : choisit posture et point cible al�atoire en phase sombre.
 func planifier_phase_obscure(center: Vector3, radius: float, rng: RandomNumberGenerator) -> void:
 	if not est_vivant or est_humain:
 		return
@@ -315,6 +336,7 @@ func planifier_phase_obscure(center: Vector3, radius: float, rng: RandomNumberGe
 	var z: float = rng.randf_range(-(radius - 1.2), radius - 1.2)
 	position_voulue = center + Vector3(x, 0.0, z)
 
+# D�placement bots en phase sombre vers leur position_voulue.
 func deplacer_en_obscurite(_delta: float, center: Vector3, radius: float) -> void:
 	# Déplacements bots en phase obscure (errance vers une cible).
 	if not est_vivant or est_humain:
@@ -331,6 +353,7 @@ func deplacer_en_obscurite(_delta: float, center: Vector3, radius: float) -> voi
 		velocity.z = move_toward(velocity.z, 0.0, VITESSE_DEPLACEMENT)
 	_appliquer_limites_arene(center, radius)
 
+# D�placement humain en fonction de l'input et de l'orientation cam�ra.
 func deplacer_humain(input_vector: Vector2, camera_basis: Basis, center: Vector3, radius: float) -> void:
 	# Déplacement joueur humain en tenant compte de la caméra.
 	if not est_vivant:
@@ -349,10 +372,12 @@ func deplacer_humain(input_vector: Vector2, camera_basis: Basis, center: Vector3
 	velocity.z = movement.z * VITESSE_DEPLACEMENT * speed_multiplier
 	_appliquer_limites_arene(center, radius)
 
+# Met imm�diatement la v�locit� � z�ro (fin de phase sombre).
 func arreter_mouvement() -> void:
 	# Fige immédiatement le déplacement (utilisé en fin de phase).
 	velocity = Vector3.ZERO
 
+# Contraint la position dans le rayon de l'ar�ne et amortit la vitesse en bord.
 func _appliquer_limites_arene(center: Vector3, radius: float) -> void:
 	var limit: float = max(1.0, radius - 0.6)
 	var local_pos: Vector3 = global_position - center
@@ -363,6 +388,7 @@ func _appliquer_limites_arene(center: Vector3, radius: float) -> void:
 	if clamped_z != local_pos.z:
 		velocity.z = sign(clamped_z - local_pos.z) * VITESSE_DEPLACEMENT
 
+# Calcule un point de vis�e via raycast �cran->monde (souris).
 func mettre_a_jour_visee_souris(camera: Camera3D, mouse_position: Vector2) -> void:
 	if camera == null or not est_vivant or tir_verrouille:
 		return
@@ -377,6 +403,7 @@ func mettre_a_jour_visee_souris(camera: Camera3D, mouse_position: Vector2) -> vo
 	var hit_point: Vector3 = ray_origin + ray_direction * distance
 	viser_point(hit_point)
 
+# Calcule un point de vis�e depuis le stick droit et la cam�ra (manette).
 func mettre_a_jour_visee_manette(aim_input: Vector2, camera_basis: Basis) -> void:
 	if not est_vivant or tir_verrouille or aim_input.length() < 0.2:
 		return
@@ -391,6 +418,7 @@ func mettre_a_jour_visee_manette(aim_input: Vector2, camera_basis: Basis) -> voi
 		return
 	viser_point(global_position + aim_direction.normalized() * DISTANCE_VISEE_MANETTE)
 
+# Choisit une cible vivante al�atoire (pour les bots).
 func choisir_cible(players: Array[PlayerCharacter], rng: RandomNumberGenerator) -> Variant:
 	var candidates: Array[PlayerCharacter] = []
 	for player: PlayerCharacter in players:
@@ -400,13 +428,16 @@ func choisir_cible(players: Array[PlayerCharacter], rng: RandomNumberGenerator) 
 		return null
 	return candidates[rng.randi_range(0, candidates.size() - 1)]
 
+# Oriente le personnage vers un point et met � jour le laser.
 func viser_point(target: Vector3) -> void:
+	# Oriente le corps vers la cible mais aplati l'axe Y pour garder un tir horizontal.
 	cible_visee = target
-	var flat_target: Vector3 = target
-	flat_target.y = global_position.y
+	cible_visee.y = global_position.y
+	var flat_target: Vector3 = cible_visee
 	look_at(flat_target, Vector3.UP)
 	mettre_a_jour_laser()
 
+# Verrouille direction/laser pour la phase lumi�re et stoppe le mouvement.
 func verrouiller_pour_lumiere() -> void:
 	# Verrouille la direction de tir pour la phase lumière.
 	velocity = Vector3.ZERO
@@ -414,18 +445,22 @@ func verrouiller_pour_lumiere() -> void:
 	tir_verrouille = true
 	mettre_a_jour_laser()
 
+# Direction actuelle de tir (non verrouill�e).
 func obtenir_direction_tir() -> Vector3:
 	var origin: Vector3 = obtenir_position_bouche_canon()
 	var direction: Vector3 = cible_visee - origin
+	direction.y = 0.0
 	if direction.length() < 0.1:
 		return -global_basis.z
 	return direction.normalized()
 
+# Direction de tir verrouill�e (fallback sur direction actuelle).
 func obtenir_direction_tir_verrouillee() -> Vector3:
 	if direction_tir_verrouillee.length() < 0.1:
 		return obtenir_direction_tir()
 	return direction_tir_verrouillee.normalized()
 
+# Met � jour position/orientation/longueur du laser visuel.
 func mettre_a_jour_laser() -> void:
 	# Met à jour position/orientation/longueur du laser visuel.
 	var laser_root: Node3D = get_node_or_null("BodyRoot/LaserRoot") as Node3D
@@ -441,11 +476,13 @@ func mettre_a_jour_laser() -> void:
 	var laser_mesh: CylinderMesh = laser_mesh_instance.mesh as CylinderMesh
 	laser_mesh.height = laser_length
 
+# Affiche/cache le laser Root.
 func _definir_laser_visible(value: bool) -> void:
 	var laser_root: Node3D = get_node_or_null("BodyRoot/LaserRoot") as Node3D
 	if laser_root != null:
 		laser_root.visible = value
 
+# Marque le joueur comme mort, coupe collisions/visuels et �met le signal elimine.
 func eliminer() -> void:
 	if not est_vivant:
 		return
@@ -462,20 +499,23 @@ func eliminer() -> void:
 	definir_nameplate_visible(false)
 	elimine.emit(self)
 
+# Retourne la position mondiale de la bouche du canon.
 func obtenir_position_bouche_canon() -> Vector3:
 	return bouche_canon.global_position if bouche_canon != null else global_position + Vector3(0.0, 0.62, -1.9)
 
+# Pose neutre des membres selon posture.
 func _appliquer_pose_idle() -> void:
 	if est_allonge:
 		_definir_transform_noeud("Torso", Vector3(0.0, 0.56, -0.1), Vector3.ZERO)
 		_definir_transform_noeud("Head", Vector3(0.0, 0.72, -0.92), Vector3.ZERO)
-		_definir_transform_noeud("ArmLeft", Vector3(-0.28, 0.54, -1.26), Vector3.ZERO)
-		_definir_transform_noeud("ArmRight", Vector3(0.28, 0.54, -1.26), Vector3.ZERO)
+		# Légère rotation vers le bas pour que le laser pointe droit en posture allongée.
+		_definir_transform_noeud("ArmLeft", Vector3(-0.28, 0.54, -1.26), Vector3(0.3, 0.0, 0.0))
+		_definir_transform_noeud("ArmRight", Vector3(0.28, 0.54, -1.26), Vector3(-0.3, 0.0, 0.0))
 		_definir_transform_noeud("LegLeft", Vector3(-0.2, 0.42, 1.02), Vector3.ZERO)
 		_definir_transform_noeud("LegRight", Vector3(0.2, 0.42, 1.02), Vector3.ZERO)
 		_definir_transform_noeud("BootLeft", Vector3(-0.2, 0.42, 1.55), Vector3.ZERO)
 		_definir_transform_noeud("BootRight", Vector3(0.2, 0.42, 1.55), Vector3.ZERO)
-		_definir_transform_noeud("Gun", Vector3(0.0, 0.66, -1.55), Vector3.ZERO)
+		_definir_transform_noeud("Gun", Vector3(0.0, 0.66, -1.55), Vector3(0.3, 0.0, 0.0))
 		_definir_transform_noeud("Nameplate", Vector3(0.0, 1.25, 0.0), Vector3.ZERO)
 	else:
 		_definir_transform_noeud("Torso", Vector3(0.0, 1.15, 0.0), Vector3.ZERO)
@@ -489,6 +529,7 @@ func _appliquer_pose_idle() -> void:
 		_definir_transform_noeud("Gun", Vector3(0.48, 1.25, -0.52), Vector3.ZERO)
 		_definir_transform_noeud("Nameplate", Vector3(0.0, 2.7, 0.0), Vector3.ZERO)
 
+# Anime marche/crawl en interpolant les transforms des membres.
 func _mettre_a_jour_animation(delta: float) -> void:
 	var horizontal_speed: float = Vector2(velocity.x, velocity.z).length()
 	var movement_ratio: float = clamp(horizontal_speed / VITESSE_DEPLACEMENT, 0.0, 1.0)
@@ -504,6 +545,7 @@ func _mettre_a_jour_animation(delta: float) -> void:
 		nameplate.rotation = Vector3.ZERO
 		nameplate.position = nameplate.position.lerp(Vector3(0.0, 1.25 if est_allonge else 2.7, 0.0), clamp(delta * VITESSE_LISSAGE_ANIM, 0.0, 1.0))
 
+# Animation debout : balancement bras/jambes + l�g�re oscillation.
 func _appliquer_animation_debout(movement_ratio: float, swing: float, sway: float, delta: float) -> void:
 	var bob: float = abs(sin(temps_animation * 2.0)) * HAUTEUR_BALANCEMENT_MARCHE * movement_ratio
 	_definir_transform_noeud_lisse("Torso", Vector3(0.0, 1.15 + bob, 0.0), Vector3(0.06 * sway * movement_ratio, 0.0, 0.0), delta)
@@ -516,6 +558,7 @@ func _appliquer_animation_debout(movement_ratio: float, swing: float, sway: floa
 	_definir_transform_noeud_lisse("BootRight", Vector3(0.2, 0.06 + bob * 0.08, 0.0), Vector3(BALANCEMENT_JAMBES_MARCHE * swing * movement_ratio, 0.0, 0.0), delta)
 	_definir_transform_noeud_lisse("Gun", Vector3(0.48, 1.25 + bob, -0.52), Vector3(-0.2 * swing * movement_ratio, 0.0, 0.0), delta)
 
+# Animation allong� : ramping avec petites oscillations.
 func _appliquer_animation_allonge(movement_ratio: float, swing: float, sway: float, delta: float) -> void:
 	var crawl_bob: float = abs(sin(temps_animation * 1.6)) * HAUTEUR_BALANCEMENT_ALLONGE * movement_ratio
 	_definir_transform_noeud_lisse("Torso", Vector3(0.0, 0.56 + crawl_bob, -0.1), Vector3(0.0, 0.0, 0.025 * sway * movement_ratio), delta)
@@ -528,6 +571,7 @@ func _appliquer_animation_allonge(movement_ratio: float, swing: float, sway: flo
 	_definir_transform_noeud_lisse("BootRight", Vector3(0.2, 0.42 + crawl_bob * 0.5, 1.55), Vector3(-BALANCEMENT_JAMBES_ALLONGE * swing * movement_ratio, 0.0, 0.0), delta)
 	_definir_transform_noeud_lisse("Gun", Vector3(0.0, 0.66 + crawl_bob, -1.55), Vector3.ZERO, delta)
 
+# Affecte directement position/rotation d'un noeud du squelette.
 func _definir_transform_noeud(node_name: String, target_position: Vector3, target_rotation: Vector3) -> void:
 	var node: Node3D = get_node_or_null("BodyRoot/%s" % node_name) as Node3D
 	if node == null:
@@ -535,6 +579,7 @@ func _definir_transform_noeud(node_name: String, target_position: Vector3, targe
 	node.position = target_position
 	node.rotation = target_rotation
 
+# Lisse position/rotation d'un noeud vers une cible (lerp).
 func _definir_transform_noeud_lisse(node_name: String, target_position: Vector3, target_rotation: Vector3, delta: float) -> void:
 	var node: Node3D = get_node_or_null("BodyRoot/%s" % node_name) as Node3D
 	if node == null:
@@ -543,6 +588,7 @@ func _definir_transform_noeud_lisse(node_name: String, target_position: Vector3,
 	node.position = node.position.lerp(target_position, weight)
 	node.rotation = node.rotation.lerp(target_rotation, weight)
 
+# Cr�e un mat�riau standard � partir d'une texture pixellis�e.
 func _creer_materiau_texture(texture: Texture2D) -> StandardMaterial3D:
 	var material: StandardMaterial3D = StandardMaterial3D.new()
 	material.albedo_texture = texture
@@ -551,6 +597,7 @@ func _creer_materiau_texture(texture: Texture2D) -> StandardMaterial3D:
 	material.roughness = 1.0
 	return material
 
+# G�n�re une mini-texture de peau � partir d'une couleur de base.
 func _creer_texture_peau(base: Color) -> ImageTexture:
 	var light: Color = _ombrer(base, 1.08)
 	var mid: Color = _ombrer(base, 0.98)
@@ -568,6 +615,7 @@ func _creer_texture_peau(base: Color) -> ImageTexture:
 			image.set_pixel(x, y, pixel)
 	return ImageTexture.create_from_image(image)
 
+# G�n�re une texture de visage simple (yeux/barbe).
 func _creer_texture_visage(base: Color) -> ImageTexture:
 	var skin_mid: Color = _ombrer(base, 1.0)
 	var skin_dark: Color = _ombrer(base, 0.82)
@@ -596,6 +644,7 @@ func _creer_texture_visage(base: Color) -> ImageTexture:
 	image.set_pixel(5, 3, eye_blue)
 	return ImageTexture.create_from_image(image)
 
+# G�n�re une texture de chemise pixelis�e.
 func _creer_texture_chemise(base: Color) -> ImageTexture:
 	var light: Color = _ombrer(base, 1.16)
 	var mid: Color = _ombrer(base, 1.0)
@@ -614,6 +663,7 @@ func _creer_texture_chemise(base: Color) -> ImageTexture:
 			image.set_pixel(x, y, pixel)
 	return ImageTexture.create_from_image(image)
 
+# G�n�re une texture de pantalon avec accents.
 func _creer_texture_pantalon(base: Color, accent: Color) -> ImageTexture:
 	var mixed: Color = base.lerp(Color(0.32, 0.36, 0.78), 0.45)
 	var light: Color = _ombrer(mixed, 1.08)
@@ -630,6 +680,7 @@ func _creer_texture_pantalon(base: Color, accent: Color) -> ImageTexture:
 			image.set_pixel(x, y, pixel)
 	return ImageTexture.create_from_image(image)
 
+# G�n�re une texture de bottes.
 func _creer_texture_bottes(base: Color) -> ImageTexture:
 	var dark: Color = _ombrer(base, 0.48)
 	var mid: Color = _ombrer(base, 0.65)
@@ -643,6 +694,7 @@ func _creer_texture_bottes(base: Color) -> ImageTexture:
 			image.set_pixel(x, y, pixel)
 	return ImageTexture.create_from_image(image)
 
+# G�n�re une texture d'arme.
 func _creer_texture_arme(base: Color) -> ImageTexture:
 	var dark: Color = _ombrer(base, 0.56)
 	var mid: Color = _ombrer(base, 0.75)
@@ -658,6 +710,7 @@ func _creer_texture_arme(base: Color) -> ImageTexture:
 			image.set_pixel(x, y, pixel)
 	return ImageTexture.create_from_image(image)
 
+# G�n�re une texture de cheveux.
 func _creer_texture_cheveux() -> ImageTexture:
 	var base: Color = Color(0.28, 0.18, 0.1)
 	var light: Color = _ombrer(base, 1.18)
@@ -673,6 +726,7 @@ func _creer_texture_cheveux() -> ImageTexture:
 			image.set_pixel(x, y, pixel)
 	return ImageTexture.create_from_image(image)
 
+# Applique un facteur d'ombrage (clamp 0..1).
 func _ombrer(color: Color, factor: float) -> Color:
 	return Color(
 		clamp(color.r * factor, 0.0, 1.0),

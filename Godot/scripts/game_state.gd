@@ -1,5 +1,11 @@
 extends Node
 
+# Stocke l'état global partagé entre les scènes et fournit les utilitaires de traduction :
+# - langue actuelle et dictionnaire de clés/valeurs
+# - mode choisi (solo/multi), nombre/difficulté des bots, nom du joueur
+# - liste des personnages disponibles + helpers pour récupérer leurs couleurs/noms
+# - mapping des actions d'entrée et résumé lisible des touches.
+
 const LANGUE_FR := "fr"
 const LANGUE_EN := "en"
 const MODE_JEU_SOLO := "solo"
@@ -264,46 +270,56 @@ var difficulte_bots_selectionnee: String = BOT_DIFFICULTE_NORMAL
 var langue_selectionnee: String = LANGUE_FR
 var volume_general: float = 0.75
 
+# Initialise la langue par defaut (FR).
 func _ready() -> void:
 	appliquer_parametres_audio()
 
+# Retourne le dictionnaire du personnage actuellement selectionne.
 func obtenir_personnage_selectionne() -> Dictionary:
 	return OPTIONS_PERSONNAGE[indice_personnage_selectionne]
 
+# Change l'index de skin selectionne.
 func selectionner_personnage(index: int) -> void:
 	if index < 0 or index >= OPTIONS_PERSONNAGE.size():
 		return
 	indice_personnage_selectionne = index
 
+# Enregistre le mode de jeu choisi (solo/multi).
 func selectionner_mode_jeu(mode: String) -> void:
 	if mode != MODE_JEU_SOLO and mode != MODE_JEU_MULTIJOUEUR:
 		return
 	mode_jeu_selectionne = mode
 
+# Met a jour le nombre de bots en respectant les bornes.
 func definir_nombre_bots(value: int) -> void:
 	nombre_bots_selectionne = clamp(value, NB_BOTS_MIN, NB_BOTS_MAX)
 
+# Met a jour la difficulte des bots.
 func definir_difficulte_bots(value: String) -> void:
 	if value != BOT_DIFFICULTE_DEBUTANT and value != BOT_DIFFICULTE_NORMAL and value != BOT_DIFFICULTE_DIFFICILE:
 		return
 	difficulte_bots_selectionnee = value
 
+# Change la langue globale et applique aux traductions.
 func definir_langue(language: String) -> void:
 	if language != LANGUE_FR and language != LANGUE_EN:
 		return
 	langue_selectionnee = language
 
+# Renvoie une cle de traduction si elle existe, sinon la cle brute.
 func cle_traduction(key: String) -> String:
 	var language_table: Dictionary = TRADUCTIONS.get(langue_selectionnee, TRADUCTIONS[LANGUE_FR])
 	if language_table.has(key):
 		return language_table[key]
 	return TRADUCTIONS[LANGUE_FR].get(key, key)
 
+# Texte lisible pour une langue donnee.
 func obtenir_nom_langue(language: String) -> String:
 	if language == LANGUE_EN:
 		return cle_traduction("language_name_en")
 	return cle_traduction("language_name_fr")
 
+# Texte lisible pour une difficulte de bots.
 func obtenir_nom_difficulte_bots(value: String) -> String:
 	match value:
 		BOT_DIFFICULTE_DEBUTANT:
@@ -313,24 +329,30 @@ func obtenir_nom_difficulte_bots(value: String) -> String:
 		_:
 			return cle_traduction("difficulty_normal")
 
+# Libelle d'un personnage (nom localise si defini).
 func obtenir_nom_personnage(character: Dictionary) -> String:
 	return character.get("name_en", "Character") if langue_selectionnee == LANGUE_EN else character.get("name_fr", "Personnage")
 
+# Construit un nom automatique pour un bot a partir du skin.
 func obtenir_nom_bot(character: Dictionary) -> String:
 	return character.get("bot_name_en", "Bot") if langue_selectionnee == LANGUE_EN else character.get("bot_name_fr", "Bot")
 
+# Force le nom du joueur humain (champ pseudo).
 func definir_nom_joueur_humain(name: String) -> void:
 	nom_joueur_humain_force = name.strip_edges()
 
+# Retourne le nom courant du joueur humain (valeur forcee si renseignee).
 func obtenir_nom_joueur_humain() -> String:
 	return nom_joueur_humain_force if nom_joueur_humain_force != "" else cle_traduction("player_you")
 
+# Libelle lisible d'une action (pour les menus).
 func obtenir_nom_action(action_id: String) -> String:
 	for binding: Dictionary in LIAISONS_ACTIONS:
 		if binding["id"] == action_id:
 			return cle_traduction(binding["label_key"])
 	return action_id
 
+# Retourne le texte clavier associe a une action.
 func obtenir_texte_touche_action(action_id: String) -> String:
 	var events: Array[InputEvent] = InputMap.action_get_events(action_id)
 	for event: InputEvent in events:
@@ -340,6 +362,7 @@ func obtenir_texte_touche_action(action_id: String) -> String:
 			return OS.get_keycode_string(keycode)
 	return cle_traduction("unassigned")
 
+# Retourne le texte manette associe a une action.
 func obtenir_texte_manette_action(action_id: String) -> String:
 	var events: Array[InputEvent] = InputMap.action_get_events(action_id)
 	for event: InputEvent in events:
@@ -347,9 +370,11 @@ func obtenir_texte_manette_action(action_id: String) -> String:
 			return _obtenir_nom_bouton_joy((event as InputEventJoypadButton).button_index)
 	return cle_traduction("unassigned")
 
+# R�sume la touche/manette assign�e � une action.
 func obtenir_resume_assignation_action(action_id: String) -> String:
 	return "%s | %s" % [obtenir_texte_touche_action(action_id), obtenir_texte_manette_action(action_id)]
 
+# Concatene un r�sum� de toutes les actions et assignations.
 func construire_texte_controles() -> String:
 	var lines: Array[String] = []
 	for binding: Dictionary in LIAISONS_ACTIONS:
@@ -357,6 +382,7 @@ func construire_texte_controles() -> String:
 	lines.append("%s : %s | %s" % [cle_traduction("controls_aim"), cle_traduction("controls_mouse"), cle_traduction("controls_right_stick")])
 	return "\n".join(lines)
 
+# Reconfigure une action avec une nouvelle touche (supprime les anciennes).
 func reaffecter_action(action_id: String, keycode: Key) -> void:
 	if not InputMap.has_action(action_id):
 		return
@@ -380,16 +406,20 @@ func reaffecter_action(action_id: String, keycode: Key) -> void:
 	})
 	ProjectSettings.save()
 
+# Stocke le volume global (0..1) et applique l'audio.
 func definir_volume_general(value: float) -> void:
 	volume_general = clamp(value, 0.0, 1.0)
 	appliquer_parametres_audio()
 
+# Retourne la valeur de volume stockee.
 func obtenir_volume_general() -> float:
 	return volume_general
 
+# Retourne le volume formate en pourcentage.
 func obtenir_texte_volume_general() -> String:
 	return "%d%%" % int(round(volume_general * 100.0))
 
+# Applique le volume sur le bus audio principal.
 func appliquer_parametres_audio() -> void:
 	var bus_index: int = AudioServer.get_bus_index("Master")
 	if bus_index < 0:
@@ -399,6 +429,7 @@ func appliquer_parametres_audio() -> void:
 	else:
 		AudioServer.set_bus_volume_db(bus_index, linear_to_db(volume_general))
 
+# Nom lisible d'un bouton de manette.
 func _obtenir_nom_bouton_joy(button_index: int) -> String:
 	match button_index:
 		0:

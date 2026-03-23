@@ -39,7 +39,7 @@ function show_database (){
   });
 };
 
-function delete_database_datas (){
+function delete_datas_from_database (){
   db.run("DELETE FROM Resultats", (err) => {
     if (err) {
         console.error("Erreur lors de la suppression :", err.message);
@@ -50,7 +50,7 @@ function delete_database_datas (){
 };
 
 //pour supprimer le contenu de la table: 
-//delete_database_datas()
+delete_datas_from_database()
 
 //Pour afficher les données
 //show_database()

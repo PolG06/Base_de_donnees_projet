@@ -1,5 +1,10 @@
 extends Control
 
+# Menu de configuration des contrôles et du volume :
+# - liste les actions définies dans GameState.LIAISONS_ACTIONS
+# - permet de réassigner une touche/manette et affiche l'état d'attente
+# - règle le volume global via GameState et renvoie au menu principal.
+
 @onready var etiquette_titre: Label = $CenterContainer/Panel/MarginContainer/VBoxContainer/TitleLabel
 @onready var etiquette_sous_titre: Label = $CenterContainer/Panel/MarginContainer/VBoxContainer/SubtitleLabel
 @onready var etiquette_entete_action: Label = $CenterContainer/Panel/MarginContainer/VBoxContainer/ControlsPanel/ControlsMargin/ControlsColumn/HeaderRow/ActionHeader
@@ -14,6 +19,7 @@ var curseur_volume: HSlider
 var etiquette_valeur_volume: Label
 
 func _ready() -> void:
+	# Applique la langue, construit la liste d'actions + volume, joue la musique, connecte le retour.
 	_appliquer_traductions()
 	_construire_lignes_actions()
 	_rafraichir_boutons_actions()
@@ -24,6 +30,7 @@ func _ready() -> void:
 		(boutons_actions["ui_up"] as Button).call_deferred("grab_focus")
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Si on attend une nouvelle touche, capture la première pression et applique le rebind.
 	if identifiant_action_attendue.is_empty():
 		return
 	if event is InputEventKey:
@@ -38,6 +45,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _appliquer_traductions() -> void:
+	# Met à jour les libellés des entêtes et du bouton retour.
 	etiquette_titre.text = GameState.cle_traduction("settings_title")
 	etiquette_sous_titre.text = GameState.cle_traduction("settings_subtitle")
 	etiquette_entete_action.text = GameState.cle_traduction("settings_action_header")
@@ -46,6 +54,7 @@ func _appliquer_traductions() -> void:
 	bouton_retour.text = GameState.cle_traduction("common_back")
 
 func _construire_lignes_actions() -> void:
+	# Construit dynamiquement chaque ligne (libellé + bouton d'assignation) puis la ligne volume.
 	for child: Node in liste_controles.get_children():
 		child.queue_free()
 	boutons_actions.clear()
@@ -119,6 +128,7 @@ func _construire_lignes_actions() -> void:
 	aim_row.add_child(aim_value)
 
 func _rafraichir_boutons_actions() -> void:
+	# Met à jour les textes des boutons selon l'état (attente ou assignation existante) et le volume affiché.
 	for binding: Dictionary in GameState.LIAISONS_ACTIONS:
 		var action_id: String = binding["id"]
 		var button: Button = boutons_actions.get(action_id, null)
@@ -131,11 +141,13 @@ func _rafraichir_boutons_actions() -> void:
 		etiquette_valeur_volume.text = GameState.obtenir_texte_volume_general()
 
 func _sur_reaffectation_presse(action_id: String) -> void:
+	# Passe en mode "attente de touche" pour l'action choisie.
 	identifiant_action_attendue = action_id
 	etiquette_statut.text = GameState.cle_traduction("settings_waiting") % [GameState.obtenir_nom_action(action_id), GameState.obtenir_texte_manette_action(action_id)]
 	_rafraichir_boutons_actions()
 
 func _sur_volume_change(value: float) -> void:
+	# Sauvegarde le volume global et rafraîchit l'affichage; laisse l'état d'attente intact si rebind en cours.
 	GameState.definir_volume_general(value)
 	if etiquette_valeur_volume != null:
 		etiquette_valeur_volume.text = GameState.obtenir_texte_volume_general()
@@ -143,4 +155,5 @@ func _sur_volume_change(value: float) -> void:
 		etiquette_statut.text = GameState.cle_traduction("settings_volume_status")
 
 func _sur_retour_presse() -> void:
+	# Retour au menu principal.
 	get_tree().change_scene_to_file("res://scenes/menu_main.tscn")

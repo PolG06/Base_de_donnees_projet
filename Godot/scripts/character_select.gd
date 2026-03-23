@@ -1,5 +1,11 @@
 extends Control
 
+# Sélection de personnage :
+# - instancie un PlayerCharacter dans un SubViewport 3D pour l'aperçu rotatif
+# - remplit la grille des skins à partir de GameState.OPTIONS_PERSONNAGE
+# - permet de saisir le pseudo, de choisir un skin et lance la scène de jeu
+#   (ou retour aux menus) en conservant les choix dans GameState.
+
 const PREVIEW_PLAYER_SCENE := preload("res://scenes/player_character.tscn")
 
 @onready var etiquette_titre: Label = $MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn/TitleLabel
@@ -15,6 +21,7 @@ var joueur_apercu: PlayerCharacter
 var boutons_options: Array[Button] = []
 
 func _ready() -> void:
+	# Applique la langue, construit l'aperçu 3D, liste les options et connecte les boutons.
 	_appliquer_traductions()
 	_construire_apercu()
 	_construire_boutons_options()
@@ -28,23 +35,26 @@ func _ready() -> void:
 	_prendre_focus_option_selectionnee()
 
 func _process(delta: float) -> void:
+	# Fait lentement tourner le modèle d'aperçu.
 	if joueur_apercu != null:
 		joueur_apercu.rotate_y(delta * 0.9)
 
 func _appliquer_traductions() -> void:
+	# Met à jour les libellés de l'écran de sélection.
 	etiquette_titre.text = GameState.cle_traduction("character_title")
 	etiquette_conseil.text = GameState.cle_traduction("character_hint")
 	bouton_commencer.text = GameState.cle_traduction("character_start")
 	bouton_retour.text = GameState.cle_traduction("common_back")
 
 func _construire_apercu() -> void:
+	# Instancie un SubViewport 3D (caméra, lumières, sol) et un PlayerCharacter d'aperçu.
 	var root: Node3D = Node3D.new()
 	viewport_apercu.add_child(root)
 
 	var camera: Camera3D = Camera3D.new()
 	camera.current = true
 	root.add_child(camera)
-	# look_at_from_position ne nécessite pas que le nœud soit déjà dans l'arbre.
+	# look_at_from_position ne nécessite pas que le n�"ud soit déjà dans l'arbre.
 	camera.look_at_from_position(Vector3(0, 1.8, 4.8), Vector3(0, 1.2, 0), Vector3.UP)
 
 	var light: DirectionalLight3D = DirectionalLight3D.new()
@@ -73,6 +83,7 @@ func _construire_apercu() -> void:
 	root.add_child(joueur_apercu)
 
 func _construire_boutons_options() -> void:
+	# Remplit la grille avec un bouton par skin disponible.
 	for child: Node in grille_options.get_children():
 		child.queue_free()
 	boutons_options.clear()
@@ -89,6 +100,7 @@ func _construire_boutons_options() -> void:
 		boutons_options.append(button)
 
 func _sur_option_presse(index: int) -> void:
+	# Sélectionne le skin, actualise l'aperçu et reprend le focus sur le bouton choisi.
 	GameState.selectionner_personnage(index)
 	_rafraichir_selection()
 	MenuAudio.connecter_boutons(self)
@@ -96,6 +108,7 @@ func _sur_option_presse(index: int) -> void:
 	_prendre_focus_option_selectionnee()
 
 func _rafraichir_selection() -> void:
+	# Met à jour l'aperçu 3D (nom/couleurs) et l'état des boutons selon la sélection.
 	var selected: Dictionary = GameState.obtenir_personnage_selectionne()
 	var selected_name: String = GameState.obtenir_nom_personnage(selected)
 	etiquette_nom_apercu.text = GameState.cle_traduction("character_selected_color") % selected_name
@@ -109,16 +122,20 @@ func _rafraichir_selection() -> void:
 		boutons_options[i].text = GameState.obtenir_nom_personnage(GameState.OPTIONS_PERSONNAGE[i])
 
 func _sur_pseudo_change(text: String) -> void:
+	# Sauvegarde le pseudo saisi dans GameState.
 	GameState.definir_nom_joueur_humain(text)
 
 func _prendre_focus_option_selectionnee() -> void:
+	# Donne le focus clavier au bouton du skin sélectionné.
 	if GameState.indice_personnage_selectionne >= 0 and GameState.indice_personnage_selectionne < boutons_options.size():
 		boutons_options[GameState.indice_personnage_selectionne].call_deferred("grab_focus")
 
 func _sur_commencer_presse() -> void:
+	# Lance la scène de jeu principale.
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
 func _sur_retour_presse() -> void:
+	# Retour à l'écran précédent selon le mode choisi.
 	if GameState.mode_jeu_selectionne == GameState.MODE_JEU_SOLO:
 		get_tree().change_scene_to_file("res://scenes/solo_setup.tscn")
 	else:

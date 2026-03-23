@@ -1,6 +1,11 @@
 extends Area3D
 class_name Projectile
 
+# Projectile laser :
+# - avance en ligne droite depuis la bouche du tireur
+# - détecte les collisions avec les PlayerCharacter via Area3D
+# - émet le signal `joueur_touche` afin que le GameController applique l'élimination.
+
 signal joueur_touche(cible: PlayerCharacter, tireur: PlayerCharacter)
 
 var direction_tir := Vector3.ZERO
@@ -13,6 +18,7 @@ var a_touche: bool = false
 @onready var maillage: MeshInstance3D = $MeshInstance3D
 
 func _ready() -> void:
+	# Configure la collision/mesh du projectile et connecte l'événement d'impact.
 	var sphere := SphereShape3D.new()
 	sphere.radius = 0.16
 	forme_collision.shape = sphere
@@ -32,11 +38,13 @@ func _ready() -> void:
 	body_entered.connect(_sur_corps_penetre)
 
 func configurer(orig: Vector3, direction_coup: Vector3, proprietaire: PlayerCharacter) -> void:
+	# Paramètre la position de départ, la direction de tir et mémorise le tireur.
 	global_position = orig
 	direction_tir = direction_coup.normalized()
 	tireur = proprietaire
 
 func _physics_process(delta: float) -> void:
+	# Avance en ligne droite et teste un raycast pour détecter un impact sur le trajet.
 	if a_touche:
 		return
 	var position_depart: Vector3 = global_position
@@ -49,6 +57,7 @@ func _physics_process(delta: float) -> void:
 		queue_free()
 
 func _sur_corps_penetre(body: Node) -> void:
+	# Gestion de collision via signal Area3D.
 	if a_touche:
 		return
 	if body == tireur:
@@ -59,6 +68,7 @@ func _sur_corps_penetre(body: Node) -> void:
 	queue_free()
 
 func _verifier_impact_sur_trajet(position_depart: Vector3, position_arrivee: Vector3) -> bool:
+	# Raycast manuel pour éviter de traverser des cibles entre deux frames.
 	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(position_depart, position_arrivee)
 	query.collide_with_areas = false
 	query.collide_with_bodies = true

@@ -30,7 +30,6 @@ offset_top = 20.0
 offset_right = 649.0
 offset_bottom = 62.0
 theme_override_font_sizes/font_size = 14
-text = "Initialisation..."
 
 [node name="InfoLabel" type="Label" parent="CanvasLayer" unique_id=1653860196]
 offset_left = 24.0

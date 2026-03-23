@@ -2,50 +2,50 @@ extends Control
 
 const PREVIEW_PLAYER_SCENE := preload("res://scenes/player_character.tscn")
 
-@onready var title_label: Label = $MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn/TitleLabel
-@onready var preview_name_label: Label = $MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn/SelectedNameLabel
-@onready var preview_viewport: SubViewport = $MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn/ViewportFrame/SubViewportContainer/SubViewport
-@onready var hint_label: Label = $MarginContainer/RootColumn/MainRow/OptionsPanel/OptionsMargin/OptionsColumn/HintLabel
-@onready var options_grid: GridContainer = $MarginContainer/RootColumn/MainRow/OptionsPanel/OptionsMargin/OptionsColumn/ScrollContainer/OptionsGrid
-@onready var pseudo_line_edit: LineEdit = $MarginContainer/RootColumn/PseudoRow/PseudoLineEdit
-@onready var start_button: Button = $MarginContainer/RootColumn/BottomRow/StartButton
-@onready var back_button: Button = $MarginContainer/RootColumn/BottomRow/BackButton
+@onready var etiquette_titre: Label = $MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn/TitleLabel
+@onready var etiquette_nom_apercu: Label = $MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn/SelectedNameLabel
+@onready var viewport_apercu: SubViewport = $MarginContainer/RootColumn/MainRow/PreviewPanel/PreviewMargin/PreviewColumn/ViewportFrame/SubViewportContainer/SubViewport
+@onready var etiquette_conseil: Label = $MarginContainer/RootColumn/MainRow/OptionsPanel/OptionsMargin/OptionsColumn/HintLabel
+@onready var grille_options: GridContainer = $MarginContainer/RootColumn/MainRow/OptionsPanel/OptionsMargin/OptionsColumn/ScrollContainer/OptionsGrid
+@onready var champ_pseudo: LineEdit = $MarginContainer/RootColumn/PseudoRow/PseudoLineEdit
+@onready var bouton_commencer: Button = $MarginContainer/RootColumn/BottomRow/StartButton
+@onready var bouton_retour: Button = $MarginContainer/RootColumn/BottomRow/BackButton
 
-var preview_player: PlayerCharacter
-var option_buttons: Array[Button] = []
+var joueur_apercu: PlayerCharacter
+var boutons_options: Array[Button] = []
 
 func _ready() -> void:
-	_apply_translations()
-	_build_preview()
-	_build_option_buttons()
-	start_button.pressed.connect(_on_start_pressed)
-	back_button.pressed.connect(_on_back_pressed)
-	pseudo_line_edit.text = GameState.get_human_player_name()
-	pseudo_line_edit.text_changed.connect(_on_pseudo_changed)
-	_refresh_selection()
-	MenuAudio.connect_buttons(self)
-	MenuMusic.play_menu_music()
-	_grab_selected_option_focus()
+	_appliquer_traductions()
+	_construire_apercu()
+	_construire_boutons_options()
+	bouton_commencer.pressed.connect(_sur_commencer_presse)
+	bouton_retour.pressed.connect(_sur_retour_presse)
+	champ_pseudo.text = GameState.obtenir_nom_joueur_humain()
+	champ_pseudo.text_changed.connect(_sur_pseudo_change)
+	_rafraichir_selection()
+	MenuAudio.connecter_boutons(self)
+	MenuMusic.jouer_musique_menu()
+	_prendre_focus_option_selectionnee()
 
 func _process(delta: float) -> void:
-	if preview_player != null:
-		preview_player.rotate_y(delta * 0.9)
+	if joueur_apercu != null:
+		joueur_apercu.rotate_y(delta * 0.9)
 
-func _apply_translations() -> void:
-	title_label.text = GameState.tr_key("character_title")
-	hint_label.text = GameState.tr_key("character_hint")
-	start_button.text = GameState.tr_key("character_start")
-	back_button.text = GameState.tr_key("common_back")
+func _appliquer_traductions() -> void:
+	etiquette_titre.text = GameState.cle_traduction("character_title")
+	etiquette_conseil.text = GameState.cle_traduction("character_hint")
+	bouton_commencer.text = GameState.cle_traduction("character_start")
+	bouton_retour.text = GameState.cle_traduction("common_back")
 
-func _build_preview() -> void:
+func _construire_apercu() -> void:
 	var root: Node3D = Node3D.new()
-	preview_viewport.add_child(root)
+	viewport_apercu.add_child(root)
 
 	var camera: Camera3D = Camera3D.new()
-	camera.position = Vector3(0, 1.8, 4.8)
-	camera.look_at(Vector3(0, 1.2, 0), Vector3.UP)
 	camera.current = true
 	root.add_child(camera)
+	# look_at_from_position ne nécessite pas que le nœud soit déjà dans l'arbre.
+	camera.look_at_from_position(Vector3(0, 1.8, 4.8), Vector3(0, 1.2, 0), Vector3.UP)
 
 	var light: DirectionalLight3D = DirectionalLight3D.new()
 	light.rotation_degrees = Vector3(-45, 30, 0)
@@ -67,60 +67,59 @@ func _build_preview() -> void:
 	floor.material_override = floor_material
 	root.add_child(floor)
 
-	preview_player = PREVIEW_PLAYER_SCENE.instantiate() as PlayerCharacter
-	preview_player.player_name = "Preview"
-	preview_player.global_position = Vector3(0, 0, 0)
-	root.add_child(preview_player)
+	joueur_apercu = PREVIEW_PLAYER_SCENE.instantiate() as PlayerCharacter
+	joueur_apercu.nom_joueur = "Preview"
+	joueur_apercu.global_position = Vector3(0, 0, 0)
+	root.add_child(joueur_apercu)
 
-func _build_option_buttons() -> void:
-	for child: Node in options_grid.get_children():
+func _construire_boutons_options() -> void:
+	for child: Node in grille_options.get_children():
 		child.queue_free()
-	option_buttons.clear()
+	boutons_options.clear()
 
-	for i: int in range(GameState.CHARACTER_OPTIONS.size()):
-		var option: Dictionary = GameState.CHARACTER_OPTIONS[i]
+	for i: int in range(GameState.OPTIONS_PERSONNAGE.size()):
+		var option: Dictionary = GameState.OPTIONS_PERSONNAGE[i]
 		var button: Button = Button.new()
-		button.text = GameState.get_character_display_name(option)
+		button.text = GameState.obtenir_nom_personnage(option)
 		button.custom_minimum_size = Vector2(0, 64)
 		button.modulate = option["body_color"]
 		button.focus_mode = Control.FOCUS_ALL
-		button.pressed.connect(_on_option_pressed.bind(i))
-		options_grid.add_child(button)
-		option_buttons.append(button)
+		button.pressed.connect(_sur_option_presse.bind(i))
+		grille_options.add_child(button)
+		boutons_options.append(button)
 
-func _on_option_pressed(index: int) -> void:
-	GameState.select_character(index)
-	_refresh_selection()
-	MenuAudio.connect_buttons(self)
-	MenuMusic.play_menu_music()
-	_grab_selected_option_focus()
+func _sur_option_presse(index: int) -> void:
+	GameState.selectionner_personnage(index)
+	_rafraichir_selection()
+	MenuAudio.connecter_boutons(self)
+	MenuMusic.jouer_musique_menu()
+	_prendre_focus_option_selectionnee()
 
-func _refresh_selection() -> void:
-	var selected: Dictionary = GameState.get_selected_character()
-	var selected_name: String = GameState.get_character_display_name(selected)
-	preview_name_label.text = GameState.tr_key("character_selected_color") % selected_name
-	preview_player.player_name = selected_name
-	preview_player.player_color = selected["body_color"]
-	preview_player.skin_color = selected["skin_color"]
-	preview_player.accent_color = selected["accent_color"]
-	preview_player.rebuild_visuals()
-	for i: int in range(option_buttons.size()):
-		option_buttons[i].disabled = i == GameState.selected_character_index
-		option_buttons[i].text = GameState.get_character_display_name(GameState.CHARACTER_OPTIONS[i])
+func _rafraichir_selection() -> void:
+	var selected: Dictionary = GameState.obtenir_personnage_selectionne()
+	var selected_name: String = GameState.obtenir_nom_personnage(selected)
+	etiquette_nom_apercu.text = GameState.cle_traduction("character_selected_color") % selected_name
+	joueur_apercu.nom_joueur = selected_name
+	joueur_apercu.couleur_joueur = selected["body_color"]
+	joueur_apercu.couleur_peau = selected.get("skin_color", selected.get("couleur_peau", Color.WHITE))
+	joueur_apercu.couleur_accent = selected.get("accent_color", selected.get("couleur_accent", Color.WHITE))
+	joueur_apercu.reconstruire_visuels()
+	for i: int in range(boutons_options.size()):
+		boutons_options[i].disabled = i == GameState.indice_personnage_selectionne
+		boutons_options[i].text = GameState.obtenir_nom_personnage(GameState.OPTIONS_PERSONNAGE[i])
 
-func _on_pseudo_changed(text: String) -> void:
-	GameState.set_human_player_name(text)
+func _sur_pseudo_change(text: String) -> void:
+	GameState.definir_nom_joueur_humain(text)
 
-func _grab_selected_option_focus() -> void:
-	if GameState.selected_character_index >= 0 and GameState.selected_character_index < option_buttons.size():
-		option_buttons[GameState.selected_character_index].call_deferred("grab_focus")
+func _prendre_focus_option_selectionnee() -> void:
+	if GameState.indice_personnage_selectionne >= 0 and GameState.indice_personnage_selectionne < boutons_options.size():
+		boutons_options[GameState.indice_personnage_selectionne].call_deferred("grab_focus")
 
-func _on_start_pressed() -> void:
+func _sur_commencer_presse() -> void:
 	get_tree().change_scene_to_file("res://scenes/main.tscn")
 
-func _on_back_pressed() -> void:
-	if GameState.selected_game_mode == GameState.GAME_MODE_SOLO:
+func _sur_retour_presse() -> void:
+	if GameState.mode_jeu_selectionne == GameState.MODE_JEU_SOLO:
 		get_tree().change_scene_to_file("res://scenes/solo_setup.tscn")
 	else:
 		get_tree().change_scene_to_file("res://scenes/mode_select.tscn")
-

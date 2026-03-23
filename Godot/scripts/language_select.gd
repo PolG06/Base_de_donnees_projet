@@ -1,39 +1,38 @@
 extends Control
 
-@onready var title_label: Label = $CenterContainer/Panel/VBoxContainer/TitleLabel
-@onready var subtitle_label: Label = $CenterContainer/Panel/VBoxContainer/SubtitleLabel
-@onready var current_language_label: Label = $CenterContainer/Panel/VBoxContainer/CurrentLanguageLabel
-@onready var french_button: Button = $CenterContainer/Panel/VBoxContainer/FrenchButton
-@onready var english_button: Button = $CenterContainer/Panel/VBoxContainer/EnglishButton
-@onready var back_button: Button = $CenterContainer/Panel/VBoxContainer/BackButton
+@onready var etiquette_titre: Label = $CenterContainer/Panel/VBoxContainer/TitleLabel
+@onready var etiquette_sous_titre: Label = $CenterContainer/Panel/VBoxContainer/SubtitleLabel
+@onready var etiquette_langue_actuelle: Label = $CenterContainer/Panel/VBoxContainer/CurrentLanguageLabel
+@onready var bouton_francais: Button = $CenterContainer/Panel/VBoxContainer/FrenchButton
+@onready var bouton_anglais: Button = $CenterContainer/Panel/VBoxContainer/EnglishButton
+@onready var bouton_retour: Button = $CenterContainer/Panel/VBoxContainer/BackButton
 
 func _ready() -> void:
-	_apply_translations()
-	french_button.pressed.connect(_on_french_pressed)
-	english_button.pressed.connect(_on_english_pressed)
-	back_button.pressed.connect(_on_back_pressed)
-	MenuAudio.connect_buttons(self)
-	MenuMusic.play_menu_music()
-	french_button.call_deferred("grab_focus")
+	_appliquer_traductions()
+	bouton_francais.pressed.connect(_sur_francais_presse)
+	bouton_anglais.pressed.connect(_sur_anglais_presse)
+	bouton_retour.pressed.connect(_sur_retour_presse)
+	MenuAudio.connecter_boutons(self)
+	MenuMusic.jouer_musique_menu()
+	bouton_francais.call_deferred("grab_focus")
 
-func _apply_translations() -> void:
-	title_label.text = GameState.tr_key("language_title")
-	subtitle_label.text = GameState.tr_key("language_subtitle")
-	current_language_label.text = GameState.tr_key("language_current") % GameState.get_language_display_name(GameState.selected_language)
-	french_button.text = GameState.tr_key("language_french")
-	english_button.text = GameState.tr_key("language_english")
-	back_button.text = GameState.tr_key("common_back")
-	french_button.disabled = GameState.selected_language == GameState.LANGUAGE_FR
-	english_button.disabled = GameState.selected_language == GameState.LANGUAGE_EN
+func _appliquer_traductions() -> void:
+	etiquette_titre.text = GameState.cle_traduction("language_title")
+	etiquette_sous_titre.text = GameState.cle_traduction("language_subtitle")
+	etiquette_langue_actuelle.text = GameState.cle_traduction("language_current") % GameState.obtenir_nom_langue(GameState.langue_selectionnee)
+	bouton_francais.text = GameState.cle_traduction("language_french")
+	bouton_anglais.text = GameState.cle_traduction("language_english")
+	bouton_retour.text = GameState.cle_traduction("common_back")
+	bouton_francais.disabled = GameState.langue_selectionnee == GameState.LANGUE_FR
+	bouton_anglais.disabled = GameState.langue_selectionnee == GameState.LANGUE_EN
 
-func _on_french_pressed() -> void:
-	GameState.set_language(GameState.LANGUAGE_FR)
-	_apply_translations()
+func _sur_francais_presse() -> void:
+	GameState.definir_langue(GameState.LANGUE_FR)
+	_appliquer_traductions()
 
-func _on_english_pressed() -> void:
-	GameState.set_language(GameState.LANGUAGE_EN)
-	_apply_translations()
+func _sur_anglais_presse() -> void:
+	GameState.definir_langue(GameState.LANGUE_EN)
+	_appliquer_traductions()
 
-func _on_back_pressed() -> void:
+func _sur_retour_presse() -> void:
 	get_tree().change_scene_to_file("res://scenes/menu_main.tscn")
-

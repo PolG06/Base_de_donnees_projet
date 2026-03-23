@@ -71,6 +71,11 @@ custom_minimum_size = Vector2(0, 52)
 layout_mode = 2
 text = "Langues"
 
+[node name="ScoresButton" type="Button" parent="CenterContainer/Panel/VBoxContainer" unique_id=134567890]
+custom_minimum_size = Vector2(0, 52)
+layout_mode = 2
+text = "Scores"
+
 [node name="QuitButton" type="Button" parent="CenterContainer/Panel/VBoxContainer" unique_id=1423258068]
 custom_minimum_size = Vector2(0, 52)
 layout_mode = 2

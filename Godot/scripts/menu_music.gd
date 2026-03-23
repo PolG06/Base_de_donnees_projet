@@ -1,36 +1,36 @@
 extends Node
 
-const MENU_MUSIC := preload("res://assets/menu_music.mp3")
-const GAME_MUSIC := preload("res://assets/game_music.mp3")
+const MUSIQUE_MENU := preload("res://assets/menu_music.mp3")
+const MUSIQUE_JEU := preload("res://assets/game_music.mp3")
 
-var music_player: AudioStreamPlayer
+var lecteur_musique: AudioStreamPlayer
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	music_player = AudioStreamPlayer.new()
-	music_player.bus = "Master"
-	music_player.volume_db = -10.0
-	music_player.autoplay = false
-	music_player.process_mode = Node.PROCESS_MODE_ALWAYS
-	add_child(music_player)
+	lecteur_musique = AudioStreamPlayer.new()
+	lecteur_musique.bus = "Master"
+	lecteur_musique.volume_db = -10.0
+	lecteur_musique.autoplay = false
+	lecteur_musique.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(lecteur_musique)
 
-func play_menu_music() -> void:
-	_play_track(MENU_MUSIC)
+func jouer_musique_menu() -> void:
+	_lancer_piste(MUSIQUE_MENU)
 
-func play_game_music() -> void:
-	_play_track(GAME_MUSIC)
+func jouer_musique_jeu() -> void:
+	_lancer_piste(MUSIQUE_JEU)
 
-func stop_music() -> void:
-	if music_player == null:
+func arreter_musique() -> void:
+	if lecteur_musique == null:
 		return
-	music_player.stop()
+	lecteur_musique.stop()
 
-func _play_track(track: AudioStream) -> void:
-	if music_player == null or track == null:
+func _lancer_piste(piste: AudioStream) -> void:
+	if lecteur_musique == null or piste == null:
 		return
-	if music_player.stream != track:
-		music_player.stop()
-		music_player.stream = track
-	music_player.stream_paused = false
-	if not music_player.playing:
-		music_player.play()
+	if lecteur_musique.stream != piste:
+		lecteur_musique.stop()
+		lecteur_musique.stream = piste
+	lecteur_musique.stream_paused = false
+	if not lecteur_musique.playing:
+		lecteur_musique.play()

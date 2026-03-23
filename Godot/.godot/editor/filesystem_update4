@@ -1,3 +1,14 @@
-res://scenes/main.tscn
+res://scripts/game_state.gd
+res://scripts/main_menu.gd
+res://scripts/scores_menu.gd
+res://scripts/character_select.gd
 res://scripts/game.gd
+res://scripts/language_select.gd
+res://scripts/menu_audio.gd
+res://scripts/menu_music.gd
+res://scripts/mode_select.gd
+res://scripts/player_character.gd
+res://scripts/projectile.gd
+res://scripts/settings_menu.gd
+res://scenes/character_select.tscn
 res://scenes/menu_main.tscn

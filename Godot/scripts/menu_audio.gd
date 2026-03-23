@@ -1,31 +1,31 @@
 extends Node
 
-const CLICK_SOUND := preload("res://assets/ui_click.mp3")
+const SON_CLIC := preload("res://assets/ui_click.mp3")
 
-var click_player: AudioStreamPlayer
+var lecteur_clic: AudioStreamPlayer
 
 func _ready() -> void:
-	click_player = AudioStreamPlayer.new()
-	click_player.stream = CLICK_SOUND
-	click_player.bus = "Master"
-	add_child(click_player)
+	lecteur_clic = AudioStreamPlayer.new()
+	lecteur_clic.stream = SON_CLIC
+	lecteur_clic.bus = "Master"
+	add_child(lecteur_clic)
 
-func connect_buttons(root: Node) -> void:
-	if root == null:
+func connecter_boutons(racine: Node) -> void:
+	if racine == null:
 		return
-	if root is Button:
-		_connect_button(root as Button)
-	for child: Node in root.get_children():
-		connect_buttons(child)
+	if racine is Button:
+		_connecter_bouton(racine as Button)
+	for child: Node in racine.get_children():
+		connecter_boutons(child)
 
-func _connect_button(button: Button) -> void:
-	if button.has_meta("menu_audio_connected"):
+func _connecter_bouton(bouton: Button) -> void:
+	if bouton.has_meta("menu_audio_connected"):
 		return
-	button.set_meta("menu_audio_connected", true)
-	button.pressed.connect(_play_click)
+	bouton.set_meta("menu_audio_connected", true)
+	bouton.pressed.connect(_jouer_clic)
 
-func _play_click() -> void:
-	if click_player == null:
+func _jouer_clic() -> void:
+	if lecteur_clic == null:
 		return
-	click_player.stop()
-	click_player.play()
+	lecteur_clic.stop()
+	lecteur_clic.play()

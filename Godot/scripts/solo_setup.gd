@@ -1,71 +1,72 @@
 extends Control
 
-@onready var title_label: Label = $CenterContainer/Panel/VBoxContainer/TitleLabel
-@onready var subtitle_label: Label = $CenterContainer/Panel/VBoxContainer/SubtitleLabel
-@onready var bot_count_text_label: Label = $CenterContainer/Panel/VBoxContainer/BotCountRow/BotCountText
-@onready var hint_label: Label = $CenterContainer/Panel/VBoxContainer/HintLabel
-@onready var difficulty_label: Label = $CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyText
-@onready var beginner_button: Button = $CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyButtons/BeginnerButton
-@onready var normal_button: Button = $CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyButtons/NormalButton
-@onready var hard_button: Button = $CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyButtons/HardButton
-@onready var bot_count_label: Label = $CenterContainer/Panel/VBoxContainer/BotCountRow/BotCountValue
-@onready var minus_button: Button = $CenterContainer/Panel/VBoxContainer/BotCountRow/MinusButton
-@onready var plus_button: Button = $CenterContainer/Panel/VBoxContainer/BotCountRow/PlusButton
-@onready var continue_button: Button = $CenterContainer/Panel/VBoxContainer/ContinueButton
-@onready var back_button: Button = $CenterContainer/Panel/VBoxContainer/BackButton
+@onready var etiquette_titre: Label = $CenterContainer/Panel/VBoxContainer/TitleLabel
+@onready var etiquette_sous_titre: Label = $CenterContainer/Panel/VBoxContainer/SubtitleLabel
+@onready var etiquette_libelle_bots: Label = $CenterContainer/Panel/VBoxContainer/BotCountRow/BotCountText
+@onready var etiquette_conseil: Label = $CenterContainer/Panel/VBoxContainer/HintLabel
+@onready var etiquette_difficulte: Label = $CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyText
+@onready var bouton_debutant: Button = $CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyButtons/BeginnerButton
+@onready var bouton_normal: Button = $CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyButtons/NormalButton
+@onready var bouton_difficile: Button = $CenterContainer/Panel/VBoxContainer/DifficultyRow/DifficultyButtons/HardButton
+@onready var etiquette_compteur_bots: Label = $CenterContainer/Panel/VBoxContainer/BotCountRow/BotCountValue
+@onready var bouton_moins: Button = $CenterContainer/Panel/VBoxContainer/BotCountRow/MinusButton
+@onready var bouton_plus: Button = $CenterContainer/Panel/VBoxContainer/BotCountRow/PlusButton
+@onready var bouton_continuer: Button = $CenterContainer/Panel/VBoxContainer/ContinueButton
+@onready var bouton_retour: Button = $CenterContainer/Panel/VBoxContainer/BackButton
 
 func _ready() -> void:
-	_apply_translations()
-	minus_button.pressed.connect(_on_minus_pressed)
-	plus_button.pressed.connect(_on_plus_pressed)
-	beginner_button.pressed.connect(_on_difficulty_pressed.bind(GameState.BOT_DIFFICULTY_BEGINNER))
-	normal_button.pressed.connect(_on_difficulty_pressed.bind(GameState.BOT_DIFFICULTY_NORMAL))
-	hard_button.pressed.connect(_on_difficulty_pressed.bind(GameState.BOT_DIFFICULTY_HARD))
-	continue_button.pressed.connect(_on_continue_pressed)
-	back_button.pressed.connect(_on_back_pressed)
-	_refresh_bot_count()
-	_refresh_difficulty_buttons()
-	MenuAudio.connect_buttons(self)
-	MenuMusic.play_menu_music()
-	minus_button.call_deferred("grab_focus")
+	_appliquer_traductions()
+	bouton_moins.pressed.connect(_sur_moins_presse)
+	bouton_plus.pressed.connect(_sur_plus_presse)
+	bouton_debutant.pressed.connect(_sur_difficulte_presse.bind(GameState.BOT_DIFFICULTE_DEBUTANT))
+	bouton_normal.pressed.connect(_sur_difficulte_presse.bind(GameState.BOT_DIFFICULTE_NORMAL))
+	bouton_difficile.pressed.connect(_sur_difficulte_presse.bind(GameState.BOT_DIFFICULTE_DIFFICILE))
+	bouton_continuer.pressed.connect(_sur_continuer_presse)
+	bouton_retour.pressed.connect(_sur_retour_presse)
+	_rafraichir_compteur_bots()
+	_rafraichir_boutons_difficulte()
+	MenuAudio.connecter_boutons(self)
+	MenuMusic.jouer_musique_menu()
+	bouton_moins.call_deferred("grab_focus")
 
-func _apply_translations() -> void:
-	title_label.text = GameState.tr_key("solo_title")
-	subtitle_label.text = GameState.tr_key("solo_subtitle")
-	bot_count_text_label.text = GameState.tr_key("solo_bots_label")
-	hint_label.text = GameState.tr_key("solo_hint")
-	difficulty_label.text = GameState.tr_key("solo_difficulty_label")
-	beginner_button.text = GameState.tr_key("difficulty_beginner")
-	normal_button.text = GameState.tr_key("difficulty_normal")
-	hard_button.text = GameState.tr_key("difficulty_hard")
-	continue_button.text = GameState.tr_key("common_continue")
-	back_button.text = GameState.tr_key("common_back")
+func _appliquer_traductions() -> void:
+	etiquette_titre.text = GameState.cle_traduction("solo_title")
+	etiquette_sous_titre.text = GameState.cle_traduction("solo_subtitle")
+	etiquette_libelle_bots.text = GameState.cle_traduction("solo_bots_label")
+	etiquette_conseil.text = GameState.cle_traduction("solo_hint")
+	etiquette_difficulte.text = GameState.cle_traduction("solo_difficulty_label")
+	bouton_debutant.text = GameState.cle_traduction("difficulty_beginner")
+	bouton_normal.text = GameState.cle_traduction("difficulty_normal")
+	bouton_difficile.text = GameState.cle_traduction("difficulty_hard")
+	bouton_continuer.text = GameState.cle_traduction("common_continue")
+	bouton_retour.text = GameState.cle_traduction("common_back")
 
-func _on_minus_pressed() -> void:
-	GameState.set_bot_count(GameState.selected_bot_count - 1)
-	_refresh_bot_count()
+func _sur_moins_presse() -> void:
+	GameState.definir_nombre_bots(GameState.nombre_bots_selectionne - 1)
+	_rafraichir_compteur_bots()
 
-func _on_plus_pressed() -> void:
-	GameState.set_bot_count(GameState.selected_bot_count + 1)
-	_refresh_bot_count()
+func _sur_plus_presse() -> void:
+	GameState.definir_nombre_bots(GameState.nombre_bots_selectionne + 1)
+	_rafraichir_compteur_bots()
 
-func _on_difficulty_pressed(value: String) -> void:
-	GameState.set_bot_difficulty(value)
-	_refresh_difficulty_buttons()
+func _sur_difficulte_presse(value: String) -> void:
+	GameState.definir_difficulte_bots(value)
+	_rafraichir_boutons_difficulte()
 
-func _on_continue_pressed() -> void:
+func _sur_continuer_presse() -> void:
 	get_tree().change_scene_to_file("res://scenes/character_select.tscn")
 
-func _on_back_pressed() -> void:
+func _sur_retour_presse() -> void:
 	get_tree().change_scene_to_file("res://scenes/mode_select.tscn")
 
-func _refresh_bot_count() -> void:
-	bot_count_label.text = str(GameState.selected_bot_count)
-	minus_button.disabled = GameState.selected_bot_count <= GameState.MIN_BOT_COUNT
-	plus_button.disabled = GameState.selected_bot_count >= GameState.MAX_BOT_COUNT
+func _rafraichir_compteur_bots() -> void:
+	etiquette_compteur_bots.text = str(GameState.nombre_bots_selectionne)
+	bouton_moins.disabled = GameState.nombre_bots_selectionne <= GameState.NB_BOTS_MIN
+	bouton_plus.disabled = GameState.nombre_bots_selectionne >= GameState.NB_BOTS_MAX
 
-func _refresh_difficulty_buttons() -> void:
-	beginner_button.disabled = GameState.selected_bot_difficulty == GameState.BOT_DIFFICULTY_BEGINNER
-	normal_button.disabled = GameState.selected_bot_difficulty == GameState.BOT_DIFFICULTY_NORMAL
-	hard_button.disabled = GameState.selected_bot_difficulty == GameState.BOT_DIFFICULTY_HARD
+func _rafraichir_boutons_difficulte() -> void:
+	bouton_debutant.disabled = GameState.difficulte_bots_selectionnee == GameState.BOT_DIFFICULTE_DEBUTANT
+	bouton_normal.disabled = GameState.difficulte_bots_selectionnee == GameState.BOT_DIFFICULTE_NORMAL
+	bouton_difficile.disabled = GameState.difficulte_bots_selectionnee == GameState.BOT_DIFFICULTE_DIFFICILE
+
 

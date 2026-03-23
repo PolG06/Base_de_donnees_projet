@@ -1,16 +1,16 @@
 extends Node
 
-const LANGUAGE_FR := "fr"
-const LANGUAGE_EN := "en"
-const GAME_MODE_SOLO := "solo"
-const GAME_MODE_MULTIPLAYER := "multiplayer"
-const BOT_DIFFICULTY_BEGINNER := "beginner"
-const BOT_DIFFICULTY_NORMAL := "normal"
-const BOT_DIFFICULTY_HARD := "hard"
-const MIN_BOT_COUNT := 1
-const MAX_BOT_COUNT := 6
-var human_player_name_override: String = ""
-const ACTION_BINDINGS := [
+const LANGUE_FR := "fr"
+const LANGUE_EN := "en"
+const MODE_JEU_SOLO := "solo"
+const MODE_JEU_MULTIJOUEUR := "multiplayer"
+const BOT_DIFFICULTE_DEBUTANT := "beginner"
+const BOT_DIFFICULTE_NORMAL := "normal"
+const BOT_DIFFICULTE_DIFFICILE := "hard"
+const NB_BOTS_MIN := 1
+const NB_BOTS_MAX := 6
+var nom_joueur_humain_force: String = ""
+const LIAISONS_ACTIONS := [
 	{"id": "ui_up", "label_key": "action_move_forward"},
 	{"id": "ui_down", "label_key": "action_move_backward"},
 	{"id": "ui_left", "label_key": "action_move_left"},
@@ -19,14 +19,29 @@ const ACTION_BINDINGS := [
 	{"id": "toggle_pause", "label_key": "action_pause"}
 ]
 
-const TRANSLATIONS := {
-	LANGUAGE_FR: {
+const TRADUCTIONS := {
+	LANGUE_FR: {
 		"main_title": "Pointe ton Bagay",
 		"main_subtitle": "Blind shot en 3D",
 		"menu_play": "Jouer",
 		"menu_settings": "Parametres",
 		"menu_languages": "Langues",
+		"menu_scores": "Scores",
 		"menu_quit": "Quitter",
+		"scores_title": "Scores",
+		"scores_subtitle": "Consulte les scores enregistres",
+		"scores_header_name": "Nom",
+		"scores_header_position": "Position",
+		"scores_header_mode": "Mode",
+		"scores_header_difficulty": "Difficulte",
+		"scores_header_bots": "Bots",
+		"scores_header_skin": "Skin",
+		"scores_empty": "Aucun score enregistre pour le moment.",
+		"scores_error_db": "Impossible de charger les scores (base introuvable).",
+		"scores_back": "Quitter",
+		"scores_mode_solo": "Solo",
+		"scores_mode_multiplayer": "Multijoueur",
+		"scores_mode_hardcore": "Difficile",
 		"language_title": "Langues",
 		"language_subtitle": "Choisis la langue du jeu",
 		"language_french": "Francais",
@@ -81,13 +96,28 @@ const TRANSLATIONS := {
 		"action_pause": "Pause",
 		"player_you": "Vous"
 	},
-	LANGUAGE_EN: {
+	LANGUE_EN: {
 		"main_title": "Point Your Thing",
 		"main_subtitle": "3D blind shot",
 		"menu_play": "Play",
 		"menu_settings": "Settings",
 		"menu_languages": "Languages",
+		"menu_scores": "Scores",
 		"menu_quit": "Quit",
+		"scores_title": "Scores",
+		"scores_subtitle": "Browse the stored scores",
+		"scores_header_name": "Name",
+		"scores_header_position": "Place",
+		"scores_header_mode": "Mode",
+		"scores_header_difficulty": "Difficulty",
+		"scores_header_bots": "Bots",
+		"scores_header_skin": "Skin",
+		"scores_empty": "No scores recorded yet.",
+		"scores_error_db": "Unable to load scores (database missing).",
+		"scores_back": "Back",
+		"scores_mode_solo": "Solo",
+		"scores_mode_multiplayer": "Multiplayer",
+		"scores_mode_hardcore": "Hard",
 		"language_title": "Languages",
 		"language_subtitle": "Choose the game language",
 		"language_french": "French",
@@ -144,7 +174,7 @@ const TRANSLATIONS := {
 	}
 }
 
-const CHARACTER_OPTIONS := [
+const OPTIONS_PERSONNAGE := [
 	{
 		"id": "red_ranger",
 		"name_fr": "Rouge",
@@ -227,107 +257,107 @@ const CHARACTER_OPTIONS := [
 	}
 ]
 
-var selected_character_index: int = 0
-var selected_game_mode: String = GAME_MODE_SOLO
-var selected_bot_count: int = 3
-var selected_bot_difficulty: String = BOT_DIFFICULTY_NORMAL
-var selected_language: String = LANGUAGE_FR
-var master_volume: float = 0.75
+var indice_personnage_selectionne: int = 0
+var mode_jeu_selectionne: String = MODE_JEU_SOLO
+var nombre_bots_selectionne: int = 3
+var difficulte_bots_selectionnee: String = BOT_DIFFICULTE_NORMAL
+var langue_selectionnee: String = LANGUE_FR
+var volume_general: float = 0.75
 
 func _ready() -> void:
-	apply_audio_settings()
+	appliquer_parametres_audio()
 
-func get_selected_character() -> Dictionary:
-	return CHARACTER_OPTIONS[selected_character_index]
+func obtenir_personnage_selectionne() -> Dictionary:
+	return OPTIONS_PERSONNAGE[indice_personnage_selectionne]
 
-func select_character(index: int) -> void:
-	if index < 0 or index >= CHARACTER_OPTIONS.size():
+func selectionner_personnage(index: int) -> void:
+	if index < 0 or index >= OPTIONS_PERSONNAGE.size():
 		return
-	selected_character_index = index
+	indice_personnage_selectionne = index
 
-func select_game_mode(mode: String) -> void:
-	if mode != GAME_MODE_SOLO and mode != GAME_MODE_MULTIPLAYER:
+func selectionner_mode_jeu(mode: String) -> void:
+	if mode != MODE_JEU_SOLO and mode != MODE_JEU_MULTIJOUEUR:
 		return
-	selected_game_mode = mode
+	mode_jeu_selectionne = mode
 
-func set_bot_count(value: int) -> void:
-	selected_bot_count = clamp(value, MIN_BOT_COUNT, MAX_BOT_COUNT)
+func definir_nombre_bots(value: int) -> void:
+	nombre_bots_selectionne = clamp(value, NB_BOTS_MIN, NB_BOTS_MAX)
 
-func set_bot_difficulty(value: String) -> void:
-	if value != BOT_DIFFICULTY_BEGINNER and value != BOT_DIFFICULTY_NORMAL and value != BOT_DIFFICULTY_HARD:
+func definir_difficulte_bots(value: String) -> void:
+	if value != BOT_DIFFICULTE_DEBUTANT and value != BOT_DIFFICULTE_NORMAL and value != BOT_DIFFICULTE_DIFFICILE:
 		return
-	selected_bot_difficulty = value
+	difficulte_bots_selectionnee = value
 
-func set_language(language: String) -> void:
-	if language != LANGUAGE_FR and language != LANGUAGE_EN:
+func definir_langue(language: String) -> void:
+	if language != LANGUE_FR and language != LANGUE_EN:
 		return
-	selected_language = language
+	langue_selectionnee = language
 
-func tr_key(key: String) -> String:
-	var language_table: Dictionary = TRANSLATIONS.get(selected_language, TRANSLATIONS[LANGUAGE_FR])
+func cle_traduction(key: String) -> String:
+	var language_table: Dictionary = TRADUCTIONS.get(langue_selectionnee, TRADUCTIONS[LANGUE_FR])
 	if language_table.has(key):
 		return language_table[key]
-	return TRANSLATIONS[LANGUAGE_FR].get(key, key)
+	return TRADUCTIONS[LANGUE_FR].get(key, key)
 
-func get_language_display_name(language: String) -> String:
-	if language == LANGUAGE_EN:
-		return tr_key("language_name_en")
-	return tr_key("language_name_fr")
+func obtenir_nom_langue(language: String) -> String:
+	if language == LANGUE_EN:
+		return cle_traduction("language_name_en")
+	return cle_traduction("language_name_fr")
 
-func get_bot_difficulty_display_name(value: String) -> String:
+func obtenir_nom_difficulte_bots(value: String) -> String:
 	match value:
-		BOT_DIFFICULTY_BEGINNER:
-			return tr_key("difficulty_beginner")
-		BOT_DIFFICULTY_HARD:
-			return tr_key("difficulty_hard")
+		BOT_DIFFICULTE_DEBUTANT:
+			return cle_traduction("difficulty_beginner")
+		BOT_DIFFICULTE_DIFFICILE:
+			return cle_traduction("difficulty_hard")
 		_:
-			return tr_key("difficulty_normal")
+			return cle_traduction("difficulty_normal")
 
-func get_character_display_name(character: Dictionary) -> String:
-	return character.get("name_en", "Character") if selected_language == LANGUAGE_EN else character.get("name_fr", "Personnage")
+func obtenir_nom_personnage(character: Dictionary) -> String:
+	return character.get("name_en", "Character") if langue_selectionnee == LANGUE_EN else character.get("name_fr", "Personnage")
 
-func get_bot_display_name(character: Dictionary) -> String:
-	return character.get("bot_name_en", "Bot") if selected_language == LANGUAGE_EN else character.get("bot_name_fr", "Bot")
+func obtenir_nom_bot(character: Dictionary) -> String:
+	return character.get("bot_name_en", "Bot") if langue_selectionnee == LANGUE_EN else character.get("bot_name_fr", "Bot")
 
-func set_human_player_name(name: String) -> void:
-	human_player_name_override = name.strip_edges()
+func definir_nom_joueur_humain(name: String) -> void:
+	nom_joueur_humain_force = name.strip_edges()
 
-func get_human_player_name() -> String:
-	return human_player_name_override if human_player_name_override != "" else tr_key("player_you")
+func obtenir_nom_joueur_humain() -> String:
+	return nom_joueur_humain_force if nom_joueur_humain_force != "" else cle_traduction("player_you")
 
-func get_action_display_name(action_id: String) -> String:
-	for binding: Dictionary in ACTION_BINDINGS:
+func obtenir_nom_action(action_id: String) -> String:
+	for binding: Dictionary in LIAISONS_ACTIONS:
 		if binding["id"] == action_id:
-			return tr_key(binding["label_key"])
+			return cle_traduction(binding["label_key"])
 	return action_id
 
-func get_action_key_text(action_id: String) -> String:
+func obtenir_texte_touche_action(action_id: String) -> String:
 	var events: Array[InputEvent] = InputMap.action_get_events(action_id)
 	for event: InputEvent in events:
 		if event is InputEventKey:
 			var key_event: InputEventKey = event as InputEventKey
 			var keycode: Key = key_event.physical_keycode if key_event.physical_keycode != 0 else key_event.keycode
 			return OS.get_keycode_string(keycode)
-	return tr_key("unassigned")
+	return cle_traduction("unassigned")
 
-func get_action_gamepad_text(action_id: String) -> String:
+func obtenir_texte_manette_action(action_id: String) -> String:
 	var events: Array[InputEvent] = InputMap.action_get_events(action_id)
 	for event: InputEvent in events:
 		if event is InputEventJoypadButton:
-			return _get_joy_button_name((event as InputEventJoypadButton).button_index)
-	return tr_key("unassigned")
+			return _obtenir_nom_bouton_joy((event as InputEventJoypadButton).button_index)
+	return cle_traduction("unassigned")
 
-func get_action_binding_summary(action_id: String) -> String:
-	return "%s | %s" % [get_action_key_text(action_id), get_action_gamepad_text(action_id)]
+func obtenir_resume_assignation_action(action_id: String) -> String:
+	return "%s | %s" % [obtenir_texte_touche_action(action_id), obtenir_texte_manette_action(action_id)]
 
-func build_controls_text() -> String:
+func construire_texte_controles() -> String:
 	var lines: Array[String] = []
-	for binding: Dictionary in ACTION_BINDINGS:
-		lines.append("%s : %s" % [get_action_display_name(binding["id"]), get_action_binding_summary(binding["id"])])
-	lines.append("%s : %s | %s" % [tr_key("controls_aim"), tr_key("controls_mouse"), tr_key("controls_right_stick")])
+	for binding: Dictionary in LIAISONS_ACTIONS:
+		lines.append("%s : %s" % [obtenir_nom_action(binding["id"]), obtenir_resume_assignation_action(binding["id"])])
+	lines.append("%s : %s | %s" % [cle_traduction("controls_aim"), cle_traduction("controls_mouse"), cle_traduction("controls_right_stick")])
 	return "\n".join(lines)
 
-func rebind_action(action_id: String, keycode: Key) -> void:
+func reaffecter_action(action_id: String, keycode: Key) -> void:
 	if not InputMap.has_action(action_id):
 		return
 	var preserved_events: Array[InputEvent] = []
@@ -350,26 +380,26 @@ func rebind_action(action_id: String, keycode: Key) -> void:
 	})
 	ProjectSettings.save()
 
-func set_master_volume(value: float) -> void:
-	master_volume = clamp(value, 0.0, 1.0)
-	apply_audio_settings()
+func definir_volume_general(value: float) -> void:
+	volume_general = clamp(value, 0.0, 1.0)
+	appliquer_parametres_audio()
 
-func get_master_volume() -> float:
-	return master_volume
+func obtenir_volume_general() -> float:
+	return volume_general
 
-func get_master_volume_text() -> String:
-	return "%d%%" % int(round(master_volume * 100.0))
+func obtenir_texte_volume_general() -> String:
+	return "%d%%" % int(round(volume_general * 100.0))
 
-func apply_audio_settings() -> void:
+func appliquer_parametres_audio() -> void:
 	var bus_index: int = AudioServer.get_bus_index("Master")
 	if bus_index < 0:
 		return
-	if master_volume <= 0.001:
+	if volume_general <= 0.001:
 		AudioServer.set_bus_volume_db(bus_index, -80.0)
 	else:
-		AudioServer.set_bus_volume_db(bus_index, linear_to_db(master_volume))
+		AudioServer.set_bus_volume_db(bus_index, linear_to_db(volume_general))
 
-func _get_joy_button_name(button_index: int) -> String:
+func _obtenir_nom_bouton_joy(button_index: int) -> String:
 	match button_index:
 		0:
 			return "A"
@@ -384,18 +414,16 @@ func _get_joy_button_name(button_index: int) -> String:
 		5:
 			return "RB"
 		6:
-			return tr_key("joy_start")
+			return cle_traduction("joy_start")
 		7:
-			return tr_key("joy_back")
+			return cle_traduction("joy_back")
 		11:
-			return tr_key("joy_dpad_up")
+			return cle_traduction("joy_dpad_up")
 		12:
-			return tr_key("joy_dpad_down")
+			return cle_traduction("joy_dpad_down")
 		13:
-			return tr_key("joy_dpad_left")
+			return cle_traduction("joy_dpad_left")
 		14:
-			return tr_key("joy_dpad_right")
+			return cle_traduction("joy_dpad_right")
 		_:
-			return tr_key("joy_button") % button_index
-
-
+			return cle_traduction("joy_button") % button_index

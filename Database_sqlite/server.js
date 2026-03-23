@@ -13,7 +13,7 @@ server.listen(3000, () => {
 
 //création du fichier de la base de données
 const db = new sqlite3.Database('./database.db');
-//Création de la première table
+//Création de la table Resultats
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS Resultats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,24 +27,30 @@ db.serialize(() => {
 });
 
 //pour lancer le serveur: à la racine du fichier Database_sqlite, exécuter la commande node server.js
-/*
-//Pour afficher les données
-db.each("SELECT * FROM Resultats", (err, row) => {
+
+function show_database (){
+  db.each("SELECT * FROM Resultats", (err, row) => {
     if (err) {
         console.error(err.message);
     } else {
         // Affiche la ligne entière formatée
         console.log("Ligne trouvée :", JSON.stringify(row, null, 2));
     }
-});
-*/
-/*
+  });
+};
+
+function delete_database_datas (){
+  db.run("DELETE FROM Resultats", (err) => {
+    if (err) {
+        console.error("Erreur lors de la suppression :", err.message);
+    } else {
+        console.log("Toutes les données de la table 'Resultats' ont été supprimées.");
+    }
+  });
+};
+
 //pour supprimer le contenu de la table: 
-db.run("DELETE FROM Resultats", (err) => {
-  if (err) {
-      console.error("Erreur lors de la suppression :", err.message);
-  } else {
-      console.log("✅ Toutes les données de la table 'Resultats' ont été supprimées.");
-  }
-});
-*/
+//delete_database_datas()
+
+//Pour afficher les données
+//show_database()

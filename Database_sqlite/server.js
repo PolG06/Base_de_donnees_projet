@@ -50,7 +50,7 @@ function delete_datas_from_database (){
 };
 
 //pour supprimer le contenu de la table: 
-delete_datas_from_database()
+//delete_datas_from_database()
 
 //Pour afficher les données
 //show_database()

@@ -1,47 +1,65 @@
 extends Node3D
 
-# Coeur du jeu : orchestre les phases sombre/lumi�re, encha�ne les manches,
-# pilote les joueurs (humain + bots), la cam�ra orbitale et l'UI/menus,
-# et enregistre les scores dans la base SQLite.
+# Coeur du jeu : orchestre les phases sombre/lumière, enchaîne les manches,
+# pilote les joueurs (humain + bots), la caméra du joueur, ainsi que l'apparition de transitions,
+# et enregistre les scores dans la base de données SQLite.
 
+#constantes des scènes de jeu
 const PLAYER_SCENE := preload("res://scenes/player_character.tscn")
 const PROJECTILE_SCENE := preload("res://scenes/projectile.tscn")
 
-const DARK_DURATION := 12.0 # Duree de base de la phase deplacement (decroit ensuite)
+#Constantes à propos du déroulement jeu
+const DARK_DURATION := 12.0 # Duree de base de la phase deplacement (en secondes)
 const LIGHT_SHOT_DELAY := 0.8
-const START_RADIUS := 10.5 # Rayon initial de l'arène
-const MIN_RADIUS := 3.5
+
+# Pour la taille de la plateforme
+const START_RADIUS := 10.5
+const MIN_RADIUS := 3.5 
 const SHRINK_FACTOR := 2.0 / 3.0
-const CAMERA_HEIGHT := 2.75 # Hauteur cible de la caméra
-const CAMERA_DISTANCE_DEFAUT := 4.35 # Distance orbite caméra
+
+ # Hauteur du point de vue de la caméra
+const CAMERA_HEIGHT := 2.75
+
+#Pour la distance de la caméra par rapport au joueur:
+const CAMERA_DISTANCE_DEFAUT := 4.35 
 const CAMERA_DISTANCE_MIN := 2.2
 const CAMERA_DISTANCE_MAX := 9.5
-const CAMERA_ZOOM_PAS := 0.35
+
+const CAMERA_ZOOM_PAS := 0.35 # Pour le zoom de la caméra
+
+#Pour les effets de la caméra
 const CAMERA_SMOOTHNESS := 7.0
 const CAMERA_SIDE_OFFSET := -0.45
+
 const GAMEPAD_DEADZONE := 0.2
-const CAMERA_CONTROLLER_YAW_SPEED := 3.4 # Vitesse rotation manette
+
+#Constantes pour l'utilisation de d'un manette
+const CAMERA_CONTROLLER_YAW_SPEED := 3.4
 const CAMERA_CONTROLLER_PITCH_SPEED := 2.3
 const CAMERA_CONTROLLER_PITCH_MIN := -0.35
 const CAMERA_CONTROLLER_PITCH_MAX := 0.6
-const GYRO_SPEED_SCALE := 55.0 # Intensité du fallback gyro hors fenêtre
+
+const GYRO_SPEED_SCALE := 55.0 # Intensité de l'effet "gyro" de la souris hors fenêtre
 const NETHER_BACKDROP_RADIUS := 62.0
 const NETHER_WALL_HEIGHT := 32.0
 const NETHER_CEILING_HEIGHT := 28.0
 const PRE_LIGHT_OBSERVE_TIME := 6.0 # Délai d'observation avant les tirs
+
+#Pour les transitions de jeu
 const ROUND_TRANSITION_FADE_IN := 0.55
 const ROUND_TRANSITION_HOLD := 2.6
 const ROUND_TRANSITION_FADE_OUT := 0.55
-const DATABASE_PATH := "res://../Database_sqlite/database.db"
+
+const DATABASE_PATH := "res://../Database_sqlite/database.db" #chemin relatif vers le fichier de base de donénes
 
 enum PhaseJeu { DARK, LIGHT, ROUND_END, GAME_OVER }
 
-# �?tat global de la partie
+# Varibles de la partie
 var aleatoire_partie: RandomNumberGenerator = RandomNumberGenerator.new()
-var joueurs_partie: Array[PlayerCharacter] = []
-var ordre_eliminations: Array[PlayerCharacter] = []
-var joueur_humain_principal: PlayerCharacter
-var joueur_spectateur_cible: PlayerCharacter
+var joueurs_partie: Array[PlayerCharacter] = [] #contiendra la liste des joueurs
+var ordre_eliminations: Array[PlayerCharacter] = [] #contiendra l'ordre de tir des joueurs
+var joueur_humain_principal: PlayerCharacter #permet de gérer qui le joueur
+var joueur_spectateur_cible: PlayerCharacter #permet de gérer qui le joueur que l'on va regarder en mode spectateur
 var tween_transition_manche: Tween
 var centre_arene: Vector3 = Vector3.ZERO
 var rayon_arene_courant: float = START_RADIUS
@@ -86,6 +104,7 @@ var overlay_mort: ColorRect
 var etiquette_mort: Label
 var overlay_mort_actif: bool = false
 
+#récupération des autres noeuds enfants afin de les manipuler
 @onready var camera: Camera3D = $Camera3D
 @onready var lumiere_soleil: DirectionalLight3D = $SunLight
 @onready var environnement_monde: WorldEnvironment = $WorldEnvironment
@@ -136,12 +155,14 @@ func _ready() -> void:
 	bouton_retour_parametres_pause.process_mode = Node.PROCESS_MODE_ALWAYS
 	overlay_fin.process_mode = Node.PROCESS_MODE_ALWAYS
 	game_over_bouton_quitter.process_mode = Node.PROCESS_MODE_ALWAYS
-	MenuMusic.jouer_musique_jeu()
-	_assurer_bindings_manette()
-	_construire_lignes_parametres_pause()
+	MenuMusic.jouer_musique_jeu() #on démarre la musique
+	_assurer_bindings_manette() #on prépare le jeu à recevoir des commandes de manettes
+	#pour le menu pause (échap)
+	_construire_lignes_parametres_pause() 
 	_rafraichir_boutons_parametres_pause()
 	MenuAudio.connecter_boutons(self)
 	etiquette_statut_parametres_pause.text = GameState.cle_traduction("settings_status_default")
+	#initialisation du statut des boutons des menus du jeu (click --> conséquence)
 	bouton_reprendre.pressed.connect(_sur_reprendre_presse)
 	bouton_parametres_pause.pressed.connect(_sur_parametres_pause_presse)
 	bouton_quitter.pressed.connect(_sur_quitter_presse)
@@ -157,6 +178,7 @@ func _ready() -> void:
 	panneau_ordre.visible = false
 	etiquette_notification.visible = false
 	aleatoire_partie.randomize()
+	# création de l'environnement du jeu
 	_creer_materiaux()
 	_creer_environnement()
 	_ajuster_arene_nombre_joueurs()
@@ -167,7 +189,7 @@ func _ready() -> void:
 	_demarrer_phase_obscure()
 	rafraichir_schema_bdd()
 
-# G�re les entr�es globales : rebind pause, mode spectateur, zoom molette, pause.
+# Gère les entrées clavier/souris ou manette
 func _unhandled_input(event: InputEvent) -> void:
 	# Gestion des interactions (pause, spectateur, caméra souris/gyro).
 	if overlay_mort_actif:
@@ -277,7 +299,7 @@ func _ouvrir_menu_pause() -> void:
 	get_tree().paused = true
 	bouton_reprendre.call_deferred("grab_focus")
 
-# Ferme pause et reprend le jeu en reinitialisant les drapeaux.
+# Ferme pause et reprend le jeu.
 func _fermer_menu_pause() -> void:
 	menu_pause_visible = false
 	panneau_parametres_pause_visible = false
@@ -324,7 +346,6 @@ func _construire_lignes_parametres_pause() -> void:
 	boutons_actions_pause_map.clear()
 	curseur_volume_general = null
 	etiquette_valeur_volume_general = null
-
 	for binding: Dictionary in GameState.LIAISONS_ACTIONS:
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)

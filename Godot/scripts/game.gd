@@ -44,13 +44,16 @@ const NETHER_BACKDROP_RADIUS := 62.0
 const NETHER_WALL_HEIGHT := 32.0
 const NETHER_CEILING_HEIGHT := 28.0
 const PRE_LIGHT_OBSERVE_TIME := 6.0 # Délai d'observation avant les tirs
+const MOUSE_CAPTURE_BUTTONS := [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE]
+const DATABASE_USER_PATH := "user://database.db"
+const DATABASE_USER_DIR := "user://"
 
 #Pour les transitions de jeu
 const ROUND_TRANSITION_FADE_IN := 0.55
 const ROUND_TRANSITION_HOLD := 2.6
 const ROUND_TRANSITION_FADE_OUT := 0.55
 
-const DATABASE_PATH := "res://../Database_sqlite/database.db" #chemin relatif vers le fichier de base de donénes
+const DATABASE_PATH := "res://Database_sqlite/database.db" #chemin relatif vers le fichier de base de données (export inclus)
 
 enum PhaseJeu { DARK, LIGHT, ROUND_END, GAME_OVER }
 
@@ -170,10 +173,10 @@ func _ready() -> void:
 	game_over_bouton_quitter.pressed.connect(_sur_fin_quitter_presse)
 	bouton_fin_rejouer.pressed.connect(_sur_rejouer_presse)
 	bouton_fin_rejouer.text = "Sélection du mode"
-	bouton_quitter_spectateur.pressed.connect(_sur_spectateur_quitter_presse)
-	bouton_quitter_spectateur.text = "Quitter le mode spectateur"
+	bouton_quitter_spectateur.visible = false
+	bouton_quitter_spectateur.disabled = true
 	_creer_overlay_mort()
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	_capturer_souris()
 	overlay_transition_manche.visible = false
 	panneau_ordre.visible = false
 	etiquette_notification.visible = false
@@ -194,6 +197,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Gestion des interactions (pause, spectateur, caméra souris/gyro).
 	if overlay_mort_actif:
 		return
+	if event is InputEventMouseButton:
+		_capturer_souris_si_necessaire(event as InputEventMouseButton)
 	if action_pause_en_attente != "" and event is InputEventKey:
 		var key_event: InputEventKey = event as InputEventKey
 		if key_event.pressed and not key_event.echo:
@@ -249,9 +254,27 @@ func _unhandled_input(event: InputEvent) -> void:
 			_basculer_menu_pause()
 		get_viewport().set_input_as_handled()
 
+func _capturer_souris_si_necessaire(mouse_event: InputEventMouseButton) -> void:
+	if not mouse_event.pressed:
+		return
+	if menu_pause_visible or panneau_parametres_pause_visible or get_tree().paused or ecran_fin_visible:
+		return
+	if mouse_event.button_index in MOUSE_CAPTURE_BUTTONS and Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
+		_capturer_souris()
+
+func _capturer_souris() -> void:
+	if menu_pause_visible or panneau_parametres_pause_visible or get_tree().paused or ecran_fin_visible:
+		return
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+func _notification(what: int) -> void:
+	if what == MainLoop.NOTIFICATION_APPLICATION_FOCUS_IN:
+		_capturer_souris()
+
 # Boucle physique : avance la phase en cours (sombre/lumiere/fin), camera et UI.
 func _physics_process(delta: float) -> void:
 	# Boucle physique : avance la phase_jeu courante, caméra, UI.
+	_capturer_souris()
 	if overlay_mort_actif:
 		_mettre_a_jour_camera(delta)
 		_mettre_a_jour_ui()
@@ -272,6 +295,7 @@ func _physics_process(delta: float) -> void:
 			_mettre_a_jour_fin_manche(delta)
 		PhaseJeu.GAME_OVER:
 			pass
+	_capturer_souris()
 	_mettre_a_jour_camera(delta)
 	_mettre_a_jour_ui()
 
@@ -297,6 +321,7 @@ func _ouvrir_menu_pause() -> void:
 	vbox_menu_pause.visible = true
 	panneau_parametres_pause.visible = false
 	get_tree().paused = true
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	bouton_reprendre.call_deferred("grab_focus")
 
 # Ferme pause et reprend le jeu.
@@ -308,6 +333,7 @@ func _fermer_menu_pause() -> void:
 	vbox_menu_pause.visible = true
 	panneau_parametres_pause.visible = false
 	get_tree().paused = false
+	_capturer_souris()
 
 # Bouton Reprendre : ferme simplement le menu pause.
 func _sur_reprendre_presse() -> void:
@@ -1266,7 +1292,6 @@ func _mettre_a_jour_ui() -> void:
 		etiquette_spectateur.text = "Spectateur - %s" % joueur_spectateur_cible.nom_joueur
 	else:
 		etiquette_spectateur.text = "Spectateur"
-	bouton_quitter_spectateur.visible = is_spectating
 	if is_spectating and phase_jeu == PhaseJeu.DARK:
 		for player: PlayerCharacter in joueurs_partie:
 			if player.est_vivant:
@@ -1665,6 +1690,8 @@ func _souris_dans_viewport() -> bool:
 
 # Ouvre/cree la base SQLite et s'assure de la presence de la table Resultats.
 func rafraichir_schema_bdd() -> void:
+	if OS.has_feature("web"):
+		return
 	var db: SQLite = SQLite.new()
 	db.path = _obtenir_chemin_bdd()
 	if not db.open_db():
@@ -1675,6 +1702,8 @@ func rafraichir_schema_bdd() -> void:
 
 # Insere une ligne de score dans SQLite (nom, rang, skin, difficulte, bots, mode).
 func enregistrer_score_bdd(name, position, skin, difficulty_selected, number_of_bots, mode: String = "solo") -> void:
+	if OS.has_feature("web"):
+		return
 	var db: SQLite = SQLite.new()
 	db.path = _obtenir_chemin_bdd()
 	if not db.open_db():
@@ -1694,6 +1723,26 @@ func enregistrer_score_bdd(name, position, skin, difficulty_selected, number_of_
 
 # Convertit le chemin relatif de la BDD en chemin global (ProjectSettings).
 func _obtenir_chemin_bdd() -> String:
+	# Priorité à une copie locale en lecture/écriture (utile pour les exports .exe/.pck).
+	var user_dir := ProjectSettings.globalize_path(DATABASE_USER_DIR)
+	DirAccess.make_dir_recursive_absolute(user_dir)
+	if not FileAccess.file_exists(DATABASE_USER_PATH):
+		if FileAccess.file_exists(DATABASE_PATH):
+			var src := FileAccess.open(DATABASE_PATH, FileAccess.READ)
+			if src:
+				var dst := FileAccess.open(DATABASE_USER_PATH, FileAccess.WRITE)
+				if dst:
+					dst.store_buffer(src.get_buffer(src.get_length()))
+					dst.close()
+				src.close()
+	# Si aucune copie, on crée un fichier vide côté user pour permettre open_db().
+	if not FileAccess.file_exists(DATABASE_USER_PATH):
+		var touch := FileAccess.open(DATABASE_USER_PATH, FileAccess.WRITE)
+		if touch:
+			touch.close()
+	# On renvoie toujours le user:// (lecture/écriture); fallback res:// si tout a échoué.
+	if FileAccess.file_exists(DATABASE_USER_PATH):
+		return ProjectSettings.globalize_path(DATABASE_USER_PATH)
 	return ProjectSettings.globalize_path(DATABASE_PATH)
 
 # Cree la table Resultats si elle n'existe pas (schema colonnes/contrainte).

@@ -79,8 +79,8 @@ func _construire_apercu() -> void:
 
 	joueur_apercu = PREVIEW_PLAYER_SCENE.instantiate() as PlayerCharacter
 	joueur_apercu.nom_joueur = "Preview"
-	joueur_apercu.global_position = Vector3(0, 0, 0)
 	root.add_child(joueur_apercu)
+	joueur_apercu.global_position = Vector3(0, 0, 0)
 
 func _construire_boutons_options() -> void:
 	# Remplit la grille avec un bouton par skin disponible.

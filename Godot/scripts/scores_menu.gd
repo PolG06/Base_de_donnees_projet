@@ -5,7 +5,9 @@ extends Control
 # - charge les lignes et remplit un tableau scrollable
 # - gère l'état vide/erreur et permet de revenir au menu principal.
 
-const DATABASE_PATH := "res://../Database_sqlite/database.db"
+const DATABASE_PATH := "res://Database_sqlite/database.db"
+const DATABASE_USER_PATH := "user://database.db"
+const DATABASE_USER_DIR := "user://"
 
 @onready var etiquette_titre: Label = $CenterContainer/Panel/MarginContainer/VBoxContainer/TitleLabel
 @onready var etiquette_sous_titre: Label = $CenterContainer/Panel/MarginContainer/VBoxContainer/SubtitleLabel
@@ -48,8 +50,11 @@ func _sur_quitter_presse() -> void:
 func _charger_scores() -> void:
 	# Ouvre la base, vérifie la table, lit les lignes et construit la liste ou affiche un message vide.
 	_vider_scores()
+	if OS.has_feature("web"):
+		_afficher_vide(GameState.cle_traduction("scores_error_db"))
+		return
 	var db: SQLite = SQLite.new()
-	db.path = ProjectSettings.globalize_path(DATABASE_PATH)
+	db.path = _obtenir_chemin_bdd()
 	if not db.open_db():
 		_afficher_vide(GameState.cle_traduction("scores_error_db"))
 		return
@@ -66,6 +71,27 @@ func _charger_scores() -> void:
 		return
 	for row in results:
 		liste_scores.add_child(_construire_ligne(row))
+
+func _obtenir_chemin_bdd() -> String:
+	# Copie la base packagée vers user:// si elle n'est pas déjà présente (lecture/écriture).
+	var user_dir := ProjectSettings.globalize_path(DATABASE_USER_DIR)
+	DirAccess.make_dir_recursive_absolute(user_dir)
+	if not FileAccess.file_exists(DATABASE_USER_PATH):
+		if FileAccess.file_exists(DATABASE_PATH):
+			var src := FileAccess.open(DATABASE_PATH, FileAccess.READ)
+			if src:
+				var dst := FileAccess.open(DATABASE_USER_PATH, FileAccess.WRITE)
+				if dst:
+					dst.store_buffer(src.get_buffer(src.get_length()))
+					dst.close()
+				src.close()
+	if not FileAccess.file_exists(DATABASE_USER_PATH):
+		var touch := FileAccess.open(DATABASE_USER_PATH, FileAccess.WRITE)
+		if touch:
+			touch.close()
+	if FileAccess.file_exists(DATABASE_USER_PATH):
+		return ProjectSettings.globalize_path(DATABASE_USER_PATH)
+	return ProjectSettings.globalize_path(DATABASE_PATH)
 
 func _vider_scores() -> void:
 	# Supprime le contenu actuel du tableau et cache le label vide.

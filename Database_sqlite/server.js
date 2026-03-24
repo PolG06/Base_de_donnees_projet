@@ -1,6 +1,19 @@
 const http = require('http');
-
+const path = require('path');
+const fs = require('fs');
+const os = require('os');
 const sqlite3 = require('sqlite3').verbose();
+
+const APP_USER_PATH = path.join(
+  process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'),
+  'Godot',
+  'app_userdata',
+  'Bagay Point',
+  'database.db'
+);
+const PACKAGED_PATH = path.resolve(__dirname, 'database.db');
+const dbPath = fs.existsSync(APP_USER_PATH) ? APP_USER_PATH : PACKAGED_PATH;
+console.log(`Base utilisée : ${dbPath}`);
 
 const server = http.createServer((req, res) => {
   res.statusCode = 200;
@@ -11,9 +24,7 @@ server.listen(3000, () => {
   console.log('Serveur en écoute sur http://localhost:3000');
 });
 
-//création du fichier de la base de données
-const db = new sqlite3.Database('./database.db');
-//Création de la table Resultats
+const db = new sqlite3.Database(dbPath);
 db.serialize(() => {
   db.run(`CREATE TABLE IF NOT EXISTS Resultats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,18 +35,25 @@ db.serialize(() => {
     mode_selected TEXT CHECK (mode_selected IN ('solo', 'multiplayer', 'difficile')),
     number_of_bots INT
   )`);
+  show_database();
 });
 
 //pour lancer le serveur: à la racine du fichier Database_sqlite, exécuter la commande node server.js
 
 function show_database (){
-  db.each("SELECT * FROM Resultats", (err, row) => {
+  db.all("SELECT * FROM Resultats", (err, rows) => {
     if (err) {
-        console.error(err.message);
-    } else {
-        // Affiche la ligne entière formatée
-        console.log("Ligne trouvée :", JSON.stringify(row, null, 2));
+      console.error("Erreur SELECT :", err.message);
+      return;
     }
+    if (!rows || rows.length === 0) {
+      console.log("Table Resultats vide.");
+      return;
+    }
+    console.log("Contenu de Resultats :");
+    rows.forEach((row, idx) => {
+      console.log(`#${idx + 1}:`, JSON.stringify(row, null, 2));
+    });
   });
 };
 
@@ -52,5 +70,3 @@ function delete_datas_from_database (){
 //pour supprimer le contenu de la table: 
 //delete_datas_from_database()
 
-//Pour afficher les données
-//show_database()

@@ -1,5 +1,5 @@
 63f7b34db8d8cdea90c76aacccf841ec
-::res://::1774434914
+::res://::1774434916
 export_presets.cfg::TextFile::-1::1774434688::0::1::::<><><>0<>0<><>::
 icon.svg::CompressedTexture2D::6759842459571691636::1774434689::1774434916::1::::<><><>0<>0<>bdbefa946826b1b863df366bed7a202c<>res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex::
 ::res://addons/::1774434687
@@ -25,9 +25,9 @@ plugin.cfg::TextFile::-1::1774434688::0::1::::<><><>0<>0<><>::
 ::res://addons/godot-sqlite/bin/libgodot-cpp.ios.template_release.xcframework/::1774434688
 ::res://addons/godot-sqlite/bin/libgodot-cpp.ios.template_release.xcframework/ios-arm64/::1774434688
 ::res://addons/godot-sqlite/bin/libgodot-cpp.ios.template_release.xcframework/ios-arm64_x86_64-simulator/::1774434688
-::res://assets/::1774434688
-game_music.mp3::AudioStreamMP3::8086248451828641678::1774434688::1774434916::1::::<><><>0<>0<>e6587e9f4cb73d275811d6025c74593c<>res://.godot/imported/game_music.mp3-9c725b4751151dc881a5adc34e36077e.mp3str::
-menu_music.mp3::AudioStreamMP3::2012679357462772618::1774434688::1774434916::1::::<><><>0<>0<>22722893ca68a33d3937bf529f606e0a<>res://.godot/imported/menu_music.mp3-62fd3f0c8c3cfa5681ad2b166f520527.mp3str::
+::res://assets/::1774436597
+game_music.mp3::AudioStreamMP3::8086248451828641678::1774436559::1774436605::1::::<><><>0<>0<>e6587e9f4cb73d275811d6025c74593c<>res://.godot/imported/game_music.mp3-9c725b4751151dc881a5adc34e36077e.mp3str::
+menu_music.mp3::AudioStreamMP3::2012679357462772618::1774436313::1774436605::1::::<><><>0<>0<>22722893ca68a33d3937bf529f606e0a<>res://.godot/imported/menu_music.mp3-62fd3f0c8c3cfa5681ad2b166f520527.mp3str::
 ui_click.mp3::AudioStreamMP3::2204496048689391101::1774434688::1774434916::1::::<><><>0<>0<>31bc81a12d95f49c7665d0dc7f56f7f3<>res://.godot/imported/ui_click.mp3-69e30fb06a5c8ecbf8102d7074379563.mp3str::
 ::res://Database_sqlite/::1774434687
 ::res://export_windows/::1774434689
@@ -57,5 +57,5 @@ projectile.gd::GDScript::3039519134310062844::1774434689::0::1::::Projectile<>Ar
 scores_menu.gd::GDScript::5365652577962063542::1774434689::0::1::::<>Control<><>0<>0<><>::
 settings_menu.gd::GDScript::3634543435612788706::1774434689::0::1::::<>Control<><>0<>0<><>::
 solo_setup.gd::GDScript::1338610112125694032::1774434689::0::1::::<>Control<><>0<>0<><>::
-::res://src/::1774434689
+::res://src/::1774434916
 app_icon.png::CompressedTexture2D::5674645537654570919::1774434689::1774434916::1::::<><><>0<>0<>64e66b9f783b3d63830a3a88bae64230<>res://.godot/imported/app_icon.png-a2a651060ffc77f4eddd4763c8072f6e.ctex::

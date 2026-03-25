@@ -37,7 +37,8 @@ const GAMEPAD_DEADZONE := 0.2
 const CAMERA_CONTROLLER_YAW_SPEED := 3.4
 const CAMERA_CONTROLLER_PITCH_SPEED := 2.3
 const CAMERA_CONTROLLER_PITCH_MIN := -0.35
-const CAMERA_CONTROLLER_PITCH_MAX := 0.6
+# Autorise un angle plus vertical pour voir davantage le dessus de l'arène.
+const CAMERA_CONTROLLER_PITCH_MAX := 1.1
 
 const GYRO_SPEED_SCALE := 55.0 # Intensité de l'effet "gyro" de la souris hors fenêtre
 const NETHER_BACKDROP_RADIUS := 62.0
@@ -461,6 +462,7 @@ func _sur_volume_pause_change(value: float) -> void:
 
 # Quitter depuis pause : reprend le jeu et charge menu principal.
 func _sur_quitter_presse() -> void:
+	_sauvegarder_resultat_partie()
 	get_tree().paused = false
 	menu_pause_visible = false
 	panneau_parametres_pause_visible = false
@@ -479,6 +481,7 @@ func _sur_rejouer_presse() -> void:
 
 # Quitter definitif depuis l'ecran de fin : ferme le jeu.
 func _sur_fin_quitter_presse() -> void:
+	_sauvegarder_resultat_partie()
 	get_tree().quit()
 
 # Initialise les materiaux des meshes (plateforme, lave, roches, glowstone).
@@ -599,7 +602,6 @@ func _construire_arene() -> void:
 	rim_light.light_energy = 2.6
 	rim_light.omni_range = 42.0
 	racine_arene.add_child(rim_light)
-
 	_construire_decor_nether()
 
 # Genere le decor du Nether autour de l'arene (boites texturees, piliers, arcs, cascades de lave).
@@ -1093,6 +1095,7 @@ func _caler_camera_sur_joueur(target_player: PlayerCharacter) -> void:
 	cible_camera_suivie = target_player
 
 func _sur_spectateur_quitter_presse() -> void:
+	_sauvegarder_resultat_partie()
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://scenes/mode_select.tscn")
 

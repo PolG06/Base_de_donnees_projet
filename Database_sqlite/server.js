@@ -4,14 +4,26 @@ const fs = require('fs');
 const os = require('os');
 const sqlite3 = require('sqlite3').verbose();
 
+// Chemin user:// utilisé par Godot (voir config/name dans project.godot).
 const APP_USER_PATH = path.join(
   process.env.APPDATA || path.join(os.homedir(), 'AppData', 'Roaming'),
   'Godot',
   'app_userdata',
-  'Bagay Point',
+  'Pointe ton Bagay',
   'database.db'
 );
-const PACKAGED_PATH = path.resolve(__dirname, 'database.db');
+
+// Copie packagée dans le projet Godot (exportée avec l'exe).
+const PACKAGED_PATH = path.resolve(__dirname, '..', 'Godot', 'Database_sqlite', 'database.db');
+
+// Prépare un fichier R/W pour le serveur, identique à celui du jeu.
+if (!fs.existsSync(APP_USER_PATH)) {
+  fs.mkdirSync(path.dirname(APP_USER_PATH), { recursive: true });
+  if (fs.existsSync(PACKAGED_PATH)) {
+    fs.copyFileSync(PACKAGED_PATH, APP_USER_PATH);
+  }
+}
+
 const dbPath = fs.existsSync(APP_USER_PATH) ? APP_USER_PATH : PACKAGED_PATH;
 console.log(`Base utilisée : ${dbPath}`);
 
@@ -40,33 +52,32 @@ db.serialize(() => {
 
 //pour lancer le serveur: à la racine du fichier Database_sqlite, exécuter la commande node server.js
 
-function show_database (){
-  db.all("SELECT * FROM Resultats", (err, rows) => {
+function show_database() {
+  db.all('SELECT * FROM Resultats', (err, rows) => {
     if (err) {
-      console.error("Erreur SELECT :", err.message);
+      console.error('Erreur SELECT :', err.message);
       return;
     }
     if (!rows || rows.length === 0) {
-      console.log("Table Resultats vide.");
+      console.log('Table Resultats vide.');
       return;
     }
-    console.log("Contenu de Resultats :");
+    console.log('Contenu de Resultats :');
     rows.forEach((row, idx) => {
       console.log(`#${idx + 1}:`, JSON.stringify(row, null, 2));
     });
   });
-};
+}
 
-function delete_datas_from_database (){
-  db.run("DELETE FROM Resultats", (err) => {
+function delete_datas_from_database() {
+  db.run('DELETE FROM Resultats', (err) => {
     if (err) {
-        console.error("Erreur lors de la suppression :", err.message);
+      console.error('Erreur lors de la suppression :', err.message);
     } else {
-        console.log("Toutes les données de la table 'Resultats' ont été supprimées.");
+      console.log("Toutes les données de la table 'Resultats' ont été supprimées.");
     }
   });
-};
+}
 
-//pour supprimer le contenu de la table: 
+//pour supprimer le contenu de la table: décomenter la ligne du dessous
 //delete_datas_from_database()
-

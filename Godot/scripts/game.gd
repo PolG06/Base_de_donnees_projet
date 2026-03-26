@@ -100,6 +100,8 @@ var action_pause_en_attente: String = ""
 var boutons_actions_pause_map: Dictionary = {}
 var curseur_volume_general: HSlider
 var etiquette_valeur_volume_general: Label
+var curseur_sensibilite_pause: HSlider
+var etiquette_sensibilite_pause: Label
 var lacet_camera_manette: float = 0.0
 var tangage_camera_manette: float = 0.18
 var controle_camera_manette_actif: bool = false
@@ -215,10 +217,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	var is_spectating: bool = joueur_humain_principal != null and not joueur_humain_principal.est_vivant
 	if event is InputEventMouseMotion and not get_tree().paused:
 		var motion_any: InputEventMouseMotion = event as InputEventMouseMotion
-		lacet_camera_souris -= motion_any.relative.x * 0.005
-		tangage_camera_souris = clamp(tangage_camera_souris + motion_any.relative.y * 0.003, CAMERA_CONTROLLER_PITCH_MIN, CAMERA_CONTROLLER_PITCH_MAX)
-		vitesse_lacet_gyro_mode = -motion_any.relative.x * 0.005 * GYRO_SPEED_SCALE
-		vitesse_tangage_gyro_mode = motion_any.relative.y * 0.003 * GYRO_SPEED_SCALE
+		var sensi := GameState.obtenir_sensibilite_souris()
+		lacet_camera_souris -= motion_any.relative.x * 0.005 * sensi
+		tangage_camera_souris = clamp(tangage_camera_souris + motion_any.relative.y * 0.003 * sensi, CAMERA_CONTROLLER_PITCH_MIN, CAMERA_CONTROLLER_PITCH_MAX)
+		vitesse_lacet_gyro_mode = -motion_any.relative.x * 0.005 * GYRO_SPEED_SCALE * sensi
+		vitesse_tangage_gyro_mode = motion_any.relative.y * 0.003 * GYRO_SPEED_SCALE * sensi
 		if is_spectating:
 			mode_camera_libre_actif = true
 			cible_camera_suivie = joueur_spectateur_cible
@@ -373,6 +376,8 @@ func _construire_lignes_parametres_pause() -> void:
 	boutons_actions_pause_map.clear()
 	curseur_volume_general = null
 	etiquette_valeur_volume_general = null
+	curseur_sensibilite_pause = null
+	etiquette_sensibilite_pause = null
 	for binding: Dictionary in GameState.LIAISONS_ACTIONS:
 		var row: HBoxContainer = HBoxContainer.new()
 		row.add_theme_constant_override("separation", 12)
@@ -421,6 +426,37 @@ func _construire_lignes_parametres_pause() -> void:
 	etiquette_valeur_volume_general.text = GameState.obtenir_texte_volume_general()
 	volume_box.add_child(etiquette_valeur_volume_general)
 
+	var sensi_row: HBoxContainer = HBoxContainer.new()
+	sensi_row.add_theme_constant_override("separation", 12)
+	liste_parametres_pause.add_child(sensi_row)
+
+	var sensi_label: Label = Label.new()
+	sensi_label.text = GameState.cle_traduction("settings_mouse_sens")
+	sensi_label.custom_minimum_size = Vector2(280, 46)
+	sensi_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	sensi_row.add_child(sensi_label)
+
+	var sensi_box: HBoxContainer = HBoxContainer.new()
+	sensi_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sensi_box.add_theme_constant_override("separation", 10)
+	sensi_row.add_child(sensi_box)
+
+	curseur_sensibilite_pause = HSlider.new()
+	curseur_sensibilite_pause.min_value = 0.5
+	curseur_sensibilite_pause.max_value = 2.0
+	curseur_sensibilite_pause.step = 0.05
+	curseur_sensibilite_pause.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	curseur_sensibilite_pause.custom_minimum_size = Vector2(140, 46)
+	curseur_sensibilite_pause.value = GameState.obtenir_sensibilite_souris()
+	curseur_sensibilite_pause.value_changed.connect(_sur_sensibilite_pause_change)
+	sensi_box.add_child(curseur_sensibilite_pause)
+
+	etiquette_sensibilite_pause = Label.new()
+	etiquette_sensibilite_pause.custom_minimum_size = Vector2(70, 46)
+	etiquette_sensibilite_pause.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	etiquette_sensibilite_pause.text = GameState.obtenir_texte_sensibilite_souris()
+	sensi_box.add_child(etiquette_sensibilite_pause)
+
 	var aim_row: HBoxContainer = HBoxContainer.new()
 	aim_row.add_theme_constant_override("separation", 12)
 	liste_parametres_pause.add_child(aim_row)
@@ -451,6 +487,10 @@ func _rafraichir_boutons_parametres_pause() -> void:
 		curseur_volume_general.set_value_no_signal(GameState.obtenir_volume_general())
 	if etiquette_valeur_volume_general != null:
 		etiquette_valeur_volume_general.text = GameState.obtenir_texte_volume_general()
+	if curseur_sensibilite_pause != null:
+		curseur_sensibilite_pause.set_value_no_signal(GameState.obtenir_sensibilite_souris())
+	if etiquette_sensibilite_pause != null:
+		etiquette_sensibilite_pause.text = GameState.obtenir_texte_sensibilite_souris()
 
 # Slider volume : met a jour GameState + texte, indique l'etat si pas en rebind.
 func _sur_volume_pause_change(value: float) -> void:
@@ -459,6 +499,13 @@ func _sur_volume_pause_change(value: float) -> void:
 		etiquette_valeur_volume_general.text = GameState.obtenir_texte_volume_general()
 	if action_pause_en_attente == "":
 		etiquette_statut_parametres_pause.text = GameState.cle_traduction("settings_volume_status")
+
+func _sur_sensibilite_pause_change(value: float) -> void:
+	GameState.definir_sensibilite_souris(value)
+	if etiquette_sensibilite_pause != null:
+		etiquette_sensibilite_pause.text = GameState.obtenir_texte_sensibilite_souris()
+	if action_pause_en_attente == "":
+		etiquette_statut_parametres_pause.text = GameState.cle_traduction("settings_mouse_sens_status")
 
 # Quitter depuis pause : reprend le jeu et charge menu principal.
 func _sur_quitter_presse() -> void:

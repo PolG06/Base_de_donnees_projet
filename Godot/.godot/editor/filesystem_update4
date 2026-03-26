@@ -1,1 +1,4 @@
+res://scenes/menu_main.tscn
+res://scripts/settings_menu.gd
 res://scripts/game.gd
+res://scripts/game_state.gd

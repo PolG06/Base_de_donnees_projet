@@ -1,7 +1,7 @@
 res://scenes/character_select.tscn::d2d5c141daf575b6848771da6418a9d4::1774434689::res://.godot/exported/133200997/export-8aea17560934ae1c8c49f1701a84848b-character_select.scn
 res://scenes/language_select.tscn::b63baad46462bc5932ec3ed8e0afff8d::1774434689::res://.godot/exported/133200997/export-0c08a772a161dc76f43fdf541245c036-language_select.scn
 res://scenes/main.tscn::860703a0e2ee8246e8b0b32e532177aa::1774434689::res://.godot/exported/133200997/export-3ad5c15c4f3250da0cc7c1af1770d85f-main.scn
-res://scenes/menu_main.tscn::4c901054214c7e1fd5a67d98a067c35b::1774444106::res://.godot/exported/133200997/export-0d7912981bbb405f06b29794b572b88f-menu_main.scn
+res://scenes/menu_main.tscn::4c901054214c7e1fd5a67d98a067c35b::1774522709::res://.godot/exported/133200997/export-0d7912981bbb405f06b29794b572b88f-menu_main.scn
 res://scenes/mode_select.tscn::c60b42e2063846ccdbcdd47eef459d89::1774434689::res://.godot/exported/133200997/export-968562180764a18c01621272d28911b7-mode_select.scn
 res://scenes/player_character.tscn::b547a13e24020533b908e4177fd553f0::1774434689::res://.godot/exported/133200997/export-37e4f98318012200fd676a0a7b23b4ef-player_character.scn
 res://scenes/projectile.tscn::c57ea6402ccee0c5406788b01d352f3c::1774434689::res://.godot/exported/133200997/export-a882d3c243bffac1c7822c1c45b18505-projectile.scn

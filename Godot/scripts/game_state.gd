@@ -83,6 +83,8 @@ const TRADUCTIONS := {
 		"settings_press_key": "Appuie sur une touche...",
 		"settings_volume": "Volume",
 		"settings_volume_status": "Regle le volume du jeu.",
+		"settings_mouse_sens": "Sensibilite souris",
+		"settings_mouse_sens_status": "Regle la sensibilite de la camera a la souris.",
 		"controls_aim": "Viser",
 		"controls_mouse": "Souris",
 		"controls_right_stick": "Stick droit",
@@ -159,6 +161,8 @@ const TRADUCTIONS := {
 		"settings_press_key": "Press a key...",
 		"settings_volume": "Volume",
 		"settings_volume_status": "Adjust the game volume.",
+		"settings_mouse_sens": "Mouse sensitivity",
+		"settings_mouse_sens_status": "Adjust mouse look sensitivity.",
 		"controls_aim": "Aim",
 		"controls_mouse": "Mouse",
 		"controls_right_stick": "Right stick",
@@ -269,6 +273,7 @@ var nombre_bots_selectionne: int = 3
 var difficulte_bots_selectionnee: String = BOT_DIFFICULTE_NORMAL
 var langue_selectionnee: String = LANGUE_FR
 var volume_general: float = 0.75
+var sensibilite_souris: float = 1.0
 
 # Initialise la langue par defaut (FR).
 func _ready() -> void:
@@ -428,6 +433,18 @@ func appliquer_parametres_audio() -> void:
 		AudioServer.set_bus_volume_db(bus_index, -80.0)
 	else:
 		AudioServer.set_bus_volume_db(bus_index, linear_to_db(volume_general))
+
+# Stocke la sensibilite souris (facteur multiplicatif).
+func definir_sensibilite_souris(value: float) -> void:
+	sensibilite_souris = clamp(value, 0.5, 2.0)
+
+# Retourne la sensibilite souris courante.
+func obtenir_sensibilite_souris() -> float:
+	return sensibilite_souris
+
+# Retourne la sensibilite formatee (ex : x1.20).
+func obtenir_texte_sensibilite_souris() -> String:
+	return "x%.2f" % sensibilite_souris
 
 # Nom lisible d'un bouton de manette.
 func _obtenir_nom_bouton_joy(button_index: int) -> String:

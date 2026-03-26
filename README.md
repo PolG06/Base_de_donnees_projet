@@ -24,7 +24,7 @@ Projet Godot 4 réalisé en 2e année d’informatique : un arena-shooter tour p
 
 
 ## OS prérequis afin de permettre l'exécution simple du jeu
-- un des OS suivants: Windows, Linux, MacOS, IOS, Android, VisionOS.
+- un des OS suivants: Windows, Linux
 
 ## Prérequis à la manipulation du code
 - Godot 4.6 afin de visualiser la structure du code godot, les noeuds et scènes du jeu.

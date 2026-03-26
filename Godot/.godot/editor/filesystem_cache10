@@ -1,6 +1,6 @@
 e910c82af1378a97450e26817c58487e
-::res://::1774524695
-export_presets.cfg::TextFile::-1::1774524176::0::1::::<><><>0<>0<><>::
+::res://::1774532621
+export_presets.cfg::TextFile::-1::1774525077::0::1::::<><><>0<>0<><>::
 icon.svg::CompressedTexture2D::6759842459571691636::1774434689::1774434916::1::::<><><>0<>0<>bdbefa946826b1b863df366bed7a202c<>res://.godot/imported/icon.svg-218a8f2b3041327d8a5756f3a245f83b.ctex::
 ::res://addons/::1774434687
 ::res://addons/godot-sqlite/::1774434688
@@ -8,7 +8,7 @@ gdsqlite.gdextension::GDExtension::4837341577405836572::1774434688::0::1::::<><>
 godot-sqlite.gd::GDScript::6354497535622739150::1774434688::0::1::::<>EditorPlugin<><>0<>1<><>::
 LICENSE.md::TextFile::-1::1774434687::0::1::::<><><>0<>0<><>::
 plugin.cfg::TextFile::-1::1774434688::0::1::::<><><>0<>0<><>::
-::res://addons/godot-sqlite/bin/::1774524692
+::res://addons/godot-sqlite/bin/::1774532616
 ::res://addons/godot-sqlite/bin/libgdsqlite.ios.template_debug.xcframework/::1774434687
 ::res://addons/godot-sqlite/bin/libgdsqlite.ios.template_debug.xcframework/ios-arm64/::1774434687
 ::res://addons/godot-sqlite/bin/libgdsqlite.ios.template_debug.xcframework/ios-arm64_x86_64-simulator/::1774434687
@@ -30,11 +30,8 @@ game_music.mp3::AudioStreamMP3::8086248451828641678::1774518173::1774518255::1::
 menu_music.mp3::AudioStreamMP3::2012679357462772618::1774518203::1774518255::1::::<><><>0<>0<>22722893ca68a33d3937bf529f606e0a<>res://.godot/imported/menu_music.mp3-62fd3f0c8c3cfa5681ad2b166f520527.mp3str::
 ui_click.mp3::AudioStreamMP3::2204496048689391101::1774434688::1774434916::1::::<><><>0<>0<>31bc81a12d95f49c7665d0dc7f56f7f3<>res://.godot/imported/ui_click.mp3-69e30fb06a5c8ecbf8102d7074379563.mp3str::
 ::res://Database_sqlite/::1774434687
-::res://Exports/::1774524261
-::res://Exports/For_Android/::1774521577
-::res://Exports/For_IOS/::1774521577
-::res://Exports/For_Linux/::1774521577
-::res://Exports/For_MacOS/::1774521577
+::res://Exports/::1774524807
+::res://Exports/For_Linux/::1774525037
 ::res://Exports/For_Windows/::1774524233
 ::res://scenes/::1774522709
 character_select.tscn::PackedScene::1687844803389783742::1774434689::0::1::::<><><>0<>0<><>::uid://c3g5bhui7lvhb::::res://scripts/character_select.gd

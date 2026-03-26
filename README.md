@@ -22,7 +22,6 @@ Projet Godot 4 réalisé en 2e année d’informatique : un arena-shooter tour p
   - `Exports/` : compilations du projet vers des exécutables pour chaque OS.
 - `Database_sqlite/` : scripts et utilitaires Node pour préparer ou réinitialiser la base de données en dehors de Godot.
 
-
 ## OS prérequis afin de permettre l'exécution simple du jeu
 - un des OS suivants: Windows, Linux
 
@@ -31,9 +30,11 @@ Projet Godot 4 réalisé en 2e année d’informatique : un arena-shooter tour p
 - VScode afin de visualiser le reste de la structure du projet, et de configurer la base de données
 - Node.js afin de lancer la base de données en cas de tests
 
+## Mise en route du jeu sur windows
+C'est très simple: Ouvrir le bon exécutable correspondant à l'OS Windows depuis la racine du projet.
 
-## Mise en route du jeu
-C'est très simple: Ouvrir le bon exécutable correspondant à votre OS depuis la racine du projet.
+## Mise en route du jeu sur windows
+Exécuter la commande ./Pointe-Ton-Bagay.x86_64 depuis le répertoire "Pointe-Ton-Bagay\Godot\Exports\For_Linux"
 
 ## Déroulement d’une partie
 1. Menu d'accueil avec possibilité de consulter le score, changer les parametre, fermer le jeu, changer la langue ou continuer

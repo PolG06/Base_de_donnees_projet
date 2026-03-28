@@ -31,10 +31,12 @@ Projet Godot 4 réalisé en 2e année d’informatique : un arena-shooter tour p
 - Node.js afin de lancer la base de données en cas de tests
 
 ## Mise en route du jeu sur windows
-C'est très simple: Ouvrir le bon exécutable correspondant à l'OS Windows depuis la racine du projet.
+C'est très simple: Ouvrir le l'exécutable Pointe-Ton-Bagay\Godot\Exports\For_Windows\Pointe-Ton-Bagay.exe
 
 ## Mise en route du jeu sur windows
 Exécuter la commande ./Pointe-Ton-Bagay.x86_64 depuis le répertoire "Pointe-Ton-Bagay\Godot\Exports\For_Linux"
+
+## Il est aussi possible de lancer le jeu depuis Godot directement
 
 ## Déroulement d’une partie
 1. Menu d'accueil avec possibilité de consulter le score, changer les parametre, fermer le jeu, changer la langue ou continuer
